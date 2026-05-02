@@ -1,4 +1,5 @@
 import { pgTable, serial, integer, varchar, text, boolean, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { tenants } from "./tenants";
 
 export const foodTypeEnum = pgEnum("food_type", ["veg", "non_veg", "egg"]);
@@ -28,3 +29,14 @@ export const menuItems = pgTable("menu_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const menuCategoriesRelations = relations(menuCategories, ({ many }) => ({
+  items: many(menuItems),
+}));
+
+export const menuItemsRelations = relations(menuItems, ({ one }) => ({
+  category: one(menuCategories, {
+    fields: [menuItems.categoryId],
+    references: [menuCategories.id],
+  }),
+}));

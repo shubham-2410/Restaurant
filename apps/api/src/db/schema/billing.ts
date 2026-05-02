@@ -1,4 +1,5 @@
 import { pgTable, serial, integer, varchar, numeric, timestamp, text, pgEnum, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { tenants } from "./tenants";
 import { orders } from "./orders";
 
@@ -22,3 +23,7 @@ export const bills = pgTable("bills", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   paidAt: timestamp("paid_at"),
 });
+
+export const billsRelations = relations(bills, ({ one }) => ({
+  order: one(orders, { fields: [bills.orderId], references: [orders.id] }),
+}));

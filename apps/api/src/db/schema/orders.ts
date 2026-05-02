@@ -1,4 +1,5 @@
 import { pgTable, serial, integer, text, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { tenants } from "./tenants";
 import { restaurantTables } from "./tables";
 import { users } from "./users";
@@ -33,3 +34,14 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull().default(1),
   notes: text("notes"),
 });
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  table: one(restaurantTables, { fields: [orders.tableId], references: [restaurantTables.id] }),
+  user: one(users, { fields: [orders.userId], references: [users.id] }),
+  items: many(orderItems),
+}));
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
+  menuItem: one(menuItems, { fields: [orderItems.menuItemId], references: [menuItems.id] }),
+}));

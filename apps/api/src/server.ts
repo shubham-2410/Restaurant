@@ -1,4 +1,5 @@
-import Fastify from "fastify";
+import 'dotenv/config'
+import Fastify, { type FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
@@ -12,6 +13,9 @@ import kotRoutes from "./routes/kot.js";
 import billingRoutes from "./routes/billing.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import userRoutes from "./routes/users.js";
+
+import { config } from "dotenv";
+config({ path: ".env" });
 
 const fastify = Fastify({
   logger: {
@@ -47,7 +51,7 @@ await fastify.register(dashboardRoutes);
 await fastify.register(userRoutes);
 
 // Error handler
-fastify.setErrorHandler((error, request, reply) => {
+fastify.setErrorHandler((error: FastifyError, request, reply) => { 
   if (error.name === "ZodError") {
     return reply.status(400).send({ message: "Validation error", errors: JSON.parse(error.message) });
   }
@@ -65,3 +69,4 @@ try {
   fastify.log.error(err);
   process.exit(1);
 }
+
