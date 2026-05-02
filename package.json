@@ -1,0 +1,23 @@
+{
+  "name": "restaurant-os",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "dev:api": "turbo dev --filter=@restaurant/api",
+    "dev:web": "turbo dev --filter=web",
+    "db:push": "pnpm --filter=@restaurant/api run db:push",
+    "db:seed": "pnpm --filter=@restaurant/api run db:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "prettier": "^3.5.3"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,27 @@
+import { pgTable, serial, integer, boolean, timestamp, pgEnum, text } from "drizzle-orm/pg-core";
+import { tenants } from "./tenants";
+import { orders } from "./orders";
+import { restaurantTables } from "./tables";
+import { menuItems } from "./menu";
+
+export const kotStatusEnum = pgEnum("kot_status", ["pending", "preparing", "ready", "cancelled"]);
+
+export const kots = pgTable("kots", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  tableId: integer("table_id").references(() => restaurantTables.id),
+  status: kotStatusEnum("status").notNull().default("pending"),
+  isPriority: boolean("is_priority").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const kotItems = pgTable("kot_items", {
+  id: serial("id").primaryKey(),
+  kotId: integer("kot_id").notNull().references(() => kots.id, { onDelete: "cascade" }),
+  menuItemId: integer("menu_item_id").notNull().references(() => menuItems.id),
+  name: text("name").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  notes: text("notes"),
+});
