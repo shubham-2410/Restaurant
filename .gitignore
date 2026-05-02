@@ -1,6 +1,55 @@
-node_modules/
-.turbo/
-dist/
-.next/
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.next
+out
+build
+.turbo
+
+# Environment files
 .env
-*.local
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Tauri
+apps/desktop/src-tauri/target
+
+# Expo / React Native
+apps/mobile/.expo
+apps/mobile/android
+apps/mobile/ios
+
+# Database
+*.sqlite
+*.db
+apps/api/src/db/migrations
+
+# Misc
+.cache
+*.tsbuildinfo
+coverage

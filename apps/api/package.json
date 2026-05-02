@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/server.ts",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/server.js",
     "db:push": "drizzle-kit push",
@@ -21,9 +21,11 @@
     "@fastify/rate-limit": "^10.2.2",
     "@restaurant/shared": "workspace:*",
     "bcryptjs": "^3.0.2",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.42.0",
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
+    "nodemon": "^3.1.14",
     "pg": "^8.16.0",
     "pino-pretty": "^13.0.0",
     "zod": "^3.24.2"

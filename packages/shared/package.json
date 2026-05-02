@@ -5,12 +5,24 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./types": "./src/types/index.ts",
-    "./constants": "./src/constants/index.ts",
-    "./utils": "./src/utils/index.ts",
-    "./validators": "./src/validators/index.ts",
-    "./api": "./src/api/index.ts"
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "default": "./src/types/index.ts"
+    },
+    "./constants": {
+      "default": "./src/constants/index.ts"
+    },
+    "./utils": {
+      "default": "./src/utils/index.ts"
+    },
+    "./validators": {
+      "default": "./src/validators/index.ts"
+    },
+    "./api": {
+      "default": "./src/api/index.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

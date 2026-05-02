@@ -9,7 +9,10 @@
     "dev:api": "turbo dev --filter=@restaurant/api",
     "dev:web": "turbo dev --filter=web",
     "db:push": "pnpm --filter=@restaurant/api run db:push",
-    "db:seed": "pnpm --filter=@restaurant/api run db:seed"
+    "db:seed": "pnpm --filter=@restaurant/api run db:seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "devDependencies": {
     "turbo": "^2.5.4",
