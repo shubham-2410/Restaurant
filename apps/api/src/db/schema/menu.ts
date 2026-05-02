@@ -1,6 +1,7 @@
 import { pgTable, serial, integer, varchar, text, boolean, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { tenants } from "./tenants";
+import { menuVariants, menuModifiers } from "./variants";
 
 export const foodTypeEnum = pgEnum("food_type", ["veg", "non_veg", "egg"]);
 export const gstRateEnum = pgEnum("gst_rate", ["0", "5", "12", "18", "28"]);
@@ -34,9 +35,11 @@ export const menuCategoriesRelations = relations(menuCategories, ({ many }) => (
   items: many(menuItems),
 }));
 
-export const menuItemsRelations = relations(menuItems, ({ one }) => ({
+export const menuItemsRelations = relations(menuItems, ({ one, many }) => ({
   category: one(menuCategories, {
     fields: [menuItems.categoryId],
     references: [menuCategories.id],
   }),
+  variants: many(menuVariants),
+  modifiers: many(menuModifiers),
 }));

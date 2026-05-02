@@ -3,27 +3,33 @@ import { eq, and, gte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { orders, restaurantTables, kots, bills } from "../db/schema/index.js";
 import { authenticate, getTenantId } from "../lib/auth.js";
+import { managerUp } from "../lib/rbac.js";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
-  const auth = { preHandler: [authenticate] };
+  const managerAuth = { preHandler: [authenticate, managerUp] };
 
-  fastify.get("/api/dashboard/summary", auth, async (req, reply) => {
+  fastify.get("/api/dashboard/summary", managerAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const [todayBills] = await db
-      .select({ total: sql<number>`COALESCE(SUM(${bills.total}::numeric), 0)`, count: sql<number>`COUNT(*)` })
+      .select({
+        total: sql<number>`COALESCE(SUM(${bills.total}::numeric), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
       .from(bills)
       .where(and(eq(bills.tenantId, tenantId), gte(bills.createdAt, todayStart)));
 
     const allTables = await db.select().from(restaurantTables).where(eq(restaurantTables.tenantId, tenantId));
-    const activeOrders = await db.select().from(orders).where(
-      and(eq(orders.tenantId, tenantId), sql`${orders.status} NOT IN ('billed', 'cancelled')`)
-    );
-    const pendingKots = await db.select().from(kots).where(
-      and(eq(kots.tenantId, tenantId), sql`${kots.status} IN ('pending', 'preparing')`)
-    );
+    const activeOrders = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.tenantId, tenantId), sql`${orders.status} NOT IN ('billed', 'cancelled')`));
+    const pendingKots = await db
+      .select()
+      .from(kots)
+      .where(and(eq(kots.tenantId, tenantId), sql`${kots.status} IN ('pending', 'preparing')`));
 
     return reply.send({
       todayRevenue: Number(todayBills?.total ?? 0),
@@ -35,13 +41,14 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.get("/api/dashboard/top-items", auth, async (req, reply) => {
+  fastify.get("/api/dashboard/top-items", managerAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const result = await db.execute(sql`
       SELECT oi.name, SUM(oi.quantity) as total_qty, SUM(oi.quantity * oi.price::numeric) as revenue
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.tenant_id = ${tenantId}
+        AND o.status NOT IN ('cancelled')
       GROUP BY oi.name
       ORDER BY total_qty DESC
       LIMIT 10
@@ -49,7 +56,7 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     return reply.send(result.rows);
   });
 
-  fastify.get("/api/dashboard/hourly-revenue", auth, async (req, reply) => {
+  fastify.get("/api/dashboard/hourly-revenue", managerAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const result = await db.execute(sql`
       SELECT

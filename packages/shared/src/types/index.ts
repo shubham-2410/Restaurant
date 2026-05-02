@@ -48,6 +48,23 @@ export interface MenuCategory {
   isActive: boolean;
 }
 
+export interface MenuVariant {
+  id: number;
+  menuItemId: number;
+  name: string;
+  additionalPrice: string;
+  isAvailable: boolean;
+}
+
+export interface MenuModifier {
+  id: number;
+  menuItemId: number;
+  name: string;
+  additionalPrice: string;
+  isRequired: boolean;
+  description: string | null;
+}
+
 export interface MenuItem {
   id: number;
   tenantId: number;
@@ -60,6 +77,8 @@ export interface MenuItem {
   isAvailable: boolean;
   imageUrl: string | null;
   category?: MenuCategory;
+  variants?: MenuVariant[];
+  modifiers?: MenuModifier[];
 }
 
 // ─── Table ───────────────────────────────────────────────────────────────────
@@ -146,13 +165,18 @@ export interface Kot {
 export type PaymentMethod = "cash" | "card" | "upi" | "razorpay";
 export type PaymentStatus = "pending" | "paid" | "partially_paid" | "refunded";
 
+export interface GstBreakdownEntry {
+  taxable: number;
+  gst: number;
+}
+
 export interface Bill {
   id: number;
   tenantId: number;
   orderId: number;
   billNumber: string;
   subtotal: string;
-  gstBreakdown: Record<string, number>;
+  gstBreakdown: Record<string, GstBreakdownEntry>;
   gstAmount: string;
   discount: string;
   total: string;
@@ -181,4 +205,16 @@ export interface DashboardSummary {
   availableTables: number;
   occupiedTables: number;
   pendingKots: number;
+}
+
+export interface TopItem {
+  name: string;
+  total_qty: number;
+  revenue: number;
+}
+
+export interface HourlyRevenue {
+  hour: number;
+  revenue: number;
+  orders: number;
 }

@@ -1,101 +1,149 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
-import { api } from "@/lib/api";
+import { api, createSseConnection } from "@/lib/api";
 import type { Kot } from "@restaurant/shared";
-import { Clock, AlertTriangle } from "lucide-react";
+import { KotCard } from "@/components/kitchen/kot-card";
+import { ChefHat, Wifi, WifiOff, RefreshCcw } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
-const statusColors = {
-  pending: "border-yellow-400 bg-yellow-50",
-  preparing: "border-blue-400 bg-blue-50",
-  ready: "border-green-400 bg-green-50",
-  cancelled: "border-slate-300 bg-slate-50 opacity-50",
-};
-
-function elapsed(date: string) {
-  const mins = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
-  return mins < 1 ? "Just now" : `${mins}m ago`;
-}
+const columns = [
+  { status: "pending"   as const, label: "Pending",   color: "text-amber-600",   dot: "bg-amber-400",  countBg: "bg-amber-100 text-amber-700" },
+  { status: "preparing" as const, label: "Preparing",  color: "text-blue-600",    dot: "bg-blue-500",   countBg: "bg-blue-100 text-blue-700" },
+  { status: "ready"     as const, label: "Ready ✓",   color: "text-emerald-600", dot: "bg-emerald-500", countBg: "bg-emerald-100 text-emerald-700" },
+];
 
 export default function KitchenPage() {
+  const { error } = useToast();
   const [kots, setKots] = useState<Kot[]>([]);
+  const [loadingKot, setLoadingKot] = useState<number | null>(null);
+  const [sseConnected, setSseConnected] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const loadRef = useRef<() => Promise<void>>();
 
-  const load = () => api.kot.board().then((k) => setKots(k.filter((kot) => kot.status !== "cancelled"))).catch(() => {});
-  useEffect(() => { load(); const t = setInterval(load, 15_000); return () => clearInterval(t); }, []);
+  const load = useCallback(async () => {
+    try {
+      const data = await api.kot.board();
+      setKots(data.filter((k) => k.status !== "cancelled"));
+      setLastRefresh(new Date());
+    } catch {
+      error("Failed to load kitchen board");
+    }
+  }, [error]);
+
+  loadRef.current = load;
+
+  useEffect(() => {
+    load();
+    const close = createSseConnection((data) => {
+      const msg = data as { type: string };
+      if (msg.type === "connected") setSseConnected(true);
+      if (["kot_status", "order_created", "order_updated"].includes(msg.type)) {
+        loadRef.current?.();
+      }
+    });
+    const fallback = setInterval(() => { if (!sseConnected) loadRef.current?.(); }, 15_000);
+    return () => { close(); clearInterval(fallback); };
+  }, [load]);
 
   const updateStatus = async (id: number, status: string) => {
-    await api.kot.updateStatus(id, status);
-    load();
+    setLoadingKot(id);
+    try { await api.kot.updateStatus(id, status); await load(); }
+    catch { error("Failed to update status"); }
+    finally { setLoadingKot(null); }
   };
 
-  const active = kots.filter((k) => k.status !== "ready");
-  const ready = kots.filter((k) => k.status === "ready");
+  const togglePriority = async (id: number, isPriority: boolean) => {
+    try {
+      await api.kot.setPriority(id, isPriority);
+      setKots((prev) => prev.map((k) => k.id === id ? { ...k, isPriority } : k));
+    } catch { error("Failed to update priority"); }
+  };
+
+  const totalActive = kots.filter((k) => k.status !== "ready").length;
 
   return (
     <AppLayout>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Kitchen Display</h1>
-          <button onClick={load} className="text-sm text-slate-500 hover:text-slate-900">Refresh</button>
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* KDS Header */}
+        <div className="bg-slate-950 text-white px-5 py-3 flex items-center justify-between shrink-0 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center">
+              <ChefHat className="w-4.5 h-4.5 text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-sm leading-tight">Kitchen Display System</h1>
+              <p className="text-xs text-slate-400">
+                {kots.length} KOTs total
+                {totalActive > 0 && <span className="text-orange-400 font-semibold"> · {totalActive} active</span>}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full",
+              sseConnected ? "bg-emerald-900 text-emerald-400" : "bg-slate-800 text-slate-400",
+            )}>
+              {sseConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {sseConnected ? "Live" : "Polling"}
+            </div>
+            <button
+              onClick={load}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCcw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div>
-            <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block" /> Pending ({active.filter(k => k.status === "pending").length})
-            </h2>
-            <div className="space-y-3">
-              {active.filter(k => k.status === "pending").map((kot) => <KotCard key={kot.id} kot={kot} onUpdate={updateStatus} />)}
-            </div>
-          </div>
-          <div>
-            <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-blue-400 inline-block" /> Preparing ({active.filter(k => k.status === "preparing").length})
-            </h2>
-            <div className="space-y-3">
-              {active.filter(k => k.status === "preparing").map((kot) => <KotCard key={kot.id} kot={kot} onUpdate={updateStatus} />)}
-            </div>
-          </div>
-          <div>
-            <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-green-400 inline-block" /> Ready ({ready.length})
-            </h2>
-            <div className="space-y-3">
-              {ready.map((kot) => <KotCard key={kot.id} kot={kot} onUpdate={updateStatus} />)}
-            </div>
-          </div>
+
+        {/* KDS columns */}
+        <div className="flex-1 overflow-hidden grid grid-cols-3">
+          {columns.map((col, colIdx) => {
+            const colKots = kots.filter((k) => k.status === col.status);
+            return (
+              <div
+                key={col.status}
+                className={cn(
+                  "flex flex-col overflow-hidden bg-slate-50",
+                  colIdx < columns.length - 1 && "border-r border-slate-200",
+                )}
+              >
+                {/* Column header */}
+                <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center gap-2.5 shrink-0">
+                  <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", col.dot)} />
+                  <span className={cn("font-bold text-sm", col.color)}>{col.label}</span>
+                  <span className={cn("ml-auto text-xs font-bold px-2 py-0.5 rounded-full", col.countBg)}>
+                    {colKots.length}
+                  </span>
+                </div>
+
+                {/* KOT cards */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  {colKots.map((kot) => (
+                    <KotCard
+                      key={kot.id}
+                      kot={kot}
+                      onUpdateStatus={updateStatus}
+                      onTogglePriority={togglePriority}
+                      loading={loadingKot === kot.id}
+                    />
+                  ))}
+                  {colKots.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+                      <div className="text-3xl">
+                        {col.status === "ready" ? "✅" : col.status === "preparing" ? "👨‍🍳" : "🍽️"}
+                      </div>
+                      <p className="text-sm text-slate-400 font-medium">No {col.label.replace(" ✓", "").toLowerCase()} orders</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </AppLayout>
-  );
-}
-
-function KotCard({ kot, onUpdate }: { kot: Kot; onUpdate: (id: number, status: string) => void }) {
-  const nextStatus = { pending: "preparing", preparing: "ready" } as Record<string, string>;
-  return (
-    <div className={`border-2 rounded-xl p-4 ${statusColors[kot.status]}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-bold text-slate-900">KOT #{kot.id}</span>
-        {kot.isPriority && <AlertTriangle className="w-4 h-4 text-red-500" />}
-      </div>
-      <div className="flex items-center gap-1 text-xs text-slate-500 mb-3">
-        <Clock className="w-3 h-3" /> {elapsed(kot.createdAt)}
-      </div>
-      <ul className="space-y-1 mb-3">
-        {kot.items?.map((item) => (
-          <li key={item.id} className="flex justify-between text-sm">
-            <span>{item.name}</span>
-            <span className="font-medium">×{item.quantity}</span>
-          </li>
-        ))}
-      </ul>
-      {nextStatus[kot.status] && (
-        <button
-          onClick={() => onUpdate(kot.id, nextStatus[kot.status])}
-          className="w-full py-1.5 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800"
-        >
-          Mark {nextStatus[kot.status]}
-        </button>
-      )}
-    </div>
   );
 }
