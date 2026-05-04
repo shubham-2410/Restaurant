@@ -1,13 +1,15 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { MenuItem, MenuCategory, RestaurantTable, User } from "@restaurant/shared";
-import { Plus, Minus, Trash2, ShoppingCart, Search, Truck, UtensilsCrossed, Package, UserCircle } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Search, Truck, UtensilsCrossed, Package, UserCircle, CheckCircle2 } from "lucide-react";
 import { CategoryTabs } from "@/components/menu/category-tabs";
 import { FoodTypeDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +22,13 @@ const ORDER_TYPES: { value: OrderType; label: string; icon: typeof Truck }[] = [
   { value: "delivery", label: "Delivery", icon: Truck },
 ];
 
-export default function POSPage() {
+function POSContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { success, error } = useToast();
+
+  const preselectedTableId = searchParams.get("tableId") ? parseInt(searchParams.get("tableId")!) : null;
+
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
@@ -29,10 +36,11 @@ export default function POSPage() {
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [selectedTable, setSelectedTable] = useState<number | null>(preselectedTableId);
   const [selectedWaiter, setSelectedWaiter] = useState<number | null>(null);
-  const [orderType, setOrderType] = useState<OrderType>("dine_in");
+  const [orderType, setOrderType] = useState<OrderType>(preselectedTableId ? "dine_in" : "dine_in");
   const [placing, setPlacing] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const load = useCallback(async () => {
     const [cats, items, tbls, staffList] = await Promise.all([
@@ -43,12 +51,20 @@ export default function POSPage() {
     ]);
     setCategories(cats);
     setMenuItems(items.filter((i) => i.isAvailable));
-    setTables(tbls.filter((t) => t.status === "available"));
+    setTables(tbls.filter((t) => t.status === "available" || t.id === preselectedTableId));
     setStaff(staffList.filter((u) => u.isActive && ["waiter", "cashier", "manager", "owner"].includes(u.role)));
-  }, []);
+  }, [preselectedTableId]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (orderType !== "dine_in") setSelectedTable(null); }, [orderType]);
+
+  // Keep preselected table when navigating from tables page
+  useEffect(() => {
+    if (preselectedTableId) {
+      setSelectedTable(preselectedTableId);
+      setOrderType("dine_in");
+    }
+  }, [preselectedTableId]);
 
   const filtered = menuItems.filter((i) => {
     const matchCat = activeCategory === null || i.categoryId === activeCategory;
@@ -70,10 +86,15 @@ export default function POSPage() {
   const gst = cart.reduce((s, ci) => s + (parseFloat(ci.item.price) * ci.qty * parseInt(ci.item.gstRate)) / 100, 0);
   const total = subtotal + gst;
 
-  const placeOrder = async () => {
+  const handlePlaceClick = () => {
     if (!cart.length) return;
     if (orderType === "dine_in" && !selectedTable) { error("Select a table for dine-in"); return; }
+    setShowConfirm(true);
+  };
+
+  const confirmPlaceOrder = async () => {
     setPlacing(true);
+    setShowConfirm(false);
     try {
       await api.orders.create({
         tableId: selectedTable ?? undefined,
@@ -85,12 +106,17 @@ export default function POSPage() {
       setSelectedTable(null);
       load();
       success("Order placed! KOT sent to kitchen.");
+      // If came from tables page, go back to orders
+      if (preselectedTableId) router.push("/orders");
     } catch (e: unknown) {
       error((e as { message?: string })?.message ?? "Failed to place order");
     } finally {
       setPlacing(false);
     }
   };
+
+  const selectedTableName = tables.find((t) => t.id === selectedTable)?.name;
+  const selectedWaiterName = staff.find((u) => u.id === selectedWaiter)?.name;
 
   return (
     <AppLayout>
@@ -150,7 +176,6 @@ export default function POSPage() {
 
         {/* ── RIGHT: Cart panel ── */}
         <div className="w-80 border-l border-slate-200 bg-white flex flex-col shadow-2xl">
-          {/* Config */}
           <div className="p-4 border-b border-slate-100 space-y-3 bg-gradient-to-b from-slate-50 to-white">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center shadow-sm shadow-orange-200">
@@ -274,7 +299,7 @@ export default function POSPage() {
               variant="primary"
               className="w-full"
               size="lg"
-              onClick={placeOrder}
+              onClick={handlePlaceClick}
               disabled={!cart.length || (orderType === "dine_in" && !selectedTable)}
               loading={placing}
             >
@@ -288,6 +313,88 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        title="Confirm Order"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowConfirm(false)}>Go Back</Button>
+            <Button variant="primary" onClick={confirmPlaceOrder} loading={placing}>
+              <CheckCircle2 className="w-4 h-4" /> Confirm & Place
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Order meta */}
+          <div className="bg-slate-50 rounded-xl p-3 space-y-2 text-sm">
+            <div className="flex justify-between text-slate-600">
+              <span className="font-medium">Type</span>
+              <span className="capitalize font-semibold">{orderType.replace("_", " ")}</span>
+            </div>
+            {selectedTableName && (
+              <div className="flex justify-between text-slate-600">
+                <span className="font-medium">Table</span>
+                <span className="font-semibold">{selectedTableName}</span>
+              </div>
+            )}
+            {selectedWaiterName && (
+              <div className="flex justify-between text-slate-600">
+                <span className="font-medium">Waiter</span>
+                <span className="font-semibold">{selectedWaiterName}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Items list */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Items ({cart.reduce((s, c) => s + c.qty, 0)})</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {cart.map((ci) => (
+                <div key={ci.item.id} className="px-3 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded bg-orange-100 text-orange-600 text-xs font-black flex items-center justify-center shrink-0">
+                      {ci.qty}
+                    </span>
+                    <span className="text-sm font-medium text-slate-800">{ci.item.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-900 tabular-nums">
+                    {formatCurrency(parseFloat(ci.item.price) * ci.qty)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Totals */}
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between text-slate-500">
+              <span>Subtotal</span><span className="tabular-nums">{formatCurrency(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-slate-500">
+              <span>GST</span><span className="tabular-nums">{formatCurrency(gst)}</span>
+            </div>
+            <div className="flex justify-between font-black text-slate-900 text-lg border-t border-slate-200 pt-2 mt-1">
+              <span>Total</span>
+              <span className="tabular-nums text-orange-600">{formatCurrency(total)}</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </AppLayout>
+  );
+}
+
+export default function POSPage() {
+  return (
+    <Suspense fallback={null}>
+      <POSContent />
+    </Suspense>
   );
 }

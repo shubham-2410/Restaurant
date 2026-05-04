@@ -1,5 +1,7 @@
 export * from "./tenants";
 export * from "./users";
+export * from "./admins";
+export * from "./admin-users";
 export * from "./menu";
 export * from "./variants";
 export * from "./tables";

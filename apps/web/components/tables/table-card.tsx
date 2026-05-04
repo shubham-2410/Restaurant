@@ -1,69 +1,71 @@
 "use client";
-import { Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Users, ShoppingBag, Eye } from "lucide-react";
 import type { RestaurantTable, TableStatus } from "@restaurant/shared";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
-type StatusStyle = { bg: string; border: string; text: string; dot: string; label: string };
+const statusClass: Record<TableStatus, string> = {
+  available: "table-card--available",
+  occupied:  "table-card--occupied",
+  reserved:  "table-card--reserved",
+  cleaning:  "table-card--cleaning",
+};
 
-const statusConfig: Record<TableStatus, StatusStyle> = {
-  available: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-400", label: "Available" },
-  occupied:  { bg: "bg-red-50",     border: "border-red-200",     text: "text-red-700",     dot: "bg-red-500",    label: "Occupied"  },
-  reserved:  { bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700",   dot: "bg-amber-400",  label: "Reserved"  },
-  cleaning:  { bg: "bg-blue-50",    border: "border-blue-200",    text: "text-blue-700",    dot: "bg-blue-400",   label: "Cleaning"  },
+const statusLabel: Record<TableStatus, string> = {
+  available: "Available",
+  occupied:  "Occupied",
+  reserved:  "Reserved",
+  cleaning:  "Cleaning",
 };
 
 interface TableCardProps {
   table: RestaurantTable;
   onStatusChange: (id: number, status: TableStatus) => void;
+  onTakeOrder?: (table: RestaurantTable) => void;
+  canChangeStatus?: boolean;
 }
 
-export function TableCard({ table, onStatusChange }: TableCardProps) {
-  const router = useRouter();
-  const cfg = statusConfig[table.status];
-
+export function TableCard({ table, onStatusChange, onTakeOrder, canChangeStatus = true }: TableCardProps) {
   return (
-    <div className={cn("border-2 rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition-shadow", cfg.border, cfg.bg)}>
+    <div className={`table-card ${statusClass[table.status]}`}>
       <div className="flex items-start justify-between">
         <div>
-          <h3 className={cn("text-2xl font-black tracking-tight", cfg.text)}>{table.name}</h3>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dot)} />
-            <span className={cn("text-xs font-semibold", cfg.text)}>{cfg.label}</span>
-          </div>
+          <p className="table-card__name">{table.name}</p>
+          <span className="table-card__badge">
+            <span className="table-card__dot" />
+            {statusLabel[table.status]}
+          </span>
         </div>
-        <div className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg", cfg.text, "bg-white/60")}>
-          <Users className="w-3.5 h-3.5" />
+        <span className="table-card__capacity">
+          <Users size={13} />
           {table.capacity}
-        </div>
+        </span>
       </div>
 
       {table.status === "occupied" && table.currentOrderId && (
-        <Button
-          variant="primary"
-          size="sm"
-          className="w-full"
-          onClick={() => router.push(`/orders/${table.currentOrderId}`)}
-        >
+        <button className="table-card__action table-card__action--view" onClick={() => onTakeOrder?.(table)}>
+          <Eye size={13} />
           View Order #{table.currentOrderId}
-        </Button>
+        </button>
       )}
 
-      <select
-        value={table.status}
-        onChange={(e) => onStatusChange(table.id, e.target.value as TableStatus)}
-        className={cn(
-          "w-full text-xs font-medium border rounded-lg px-2 py-1.5 bg-white/70",
-          cfg.border, cfg.text,
-          "focus:outline-none focus:ring-2 focus:ring-orange-400",
-        )}
-      >
-        <option value="available">Available</option>
-        <option value="occupied">Occupied</option>
-        <option value="reserved">Reserved</option>
-        <option value="cleaning">Cleaning</option>
-      </select>
+      {table.status === "available" && (
+        <button className="table-card__action table-card__action--take" onClick={() => onTakeOrder?.(table)}>
+          <ShoppingBag size={13} />
+          Take Order
+        </button>
+      )}
+
+      {canChangeStatus && (
+        <select
+          className="table-card__select"
+          value={table.status}
+          onChange={(e) => onStatusChange(table.id, e.target.value as TableStatus)}
+        >
+          <option value="available">Available</option>
+          <option value="occupied">Occupied</option>
+          <option value="reserved">Reserved</option>
+          <option value="cleaning">Cleaning</option>
+        </select>
+      )}
     </div>
   );
 }

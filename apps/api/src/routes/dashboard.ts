@@ -3,12 +3,11 @@ import { eq, and, gte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { orders, restaurantTables, kots, bills } from "../db/schema/index.js";
 import { authenticate, getTenantId } from "../lib/auth.js";
-import { managerUp } from "../lib/rbac.js";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
-  const managerAuth = { preHandler: [authenticate, managerUp] };
+  const staffAuth = { preHandler: [authenticate] };
 
-  fastify.get("/api/dashboard/summary", managerAuth, async (req, reply) => {
+  fastify.get("/api/dashboard/summary", staffAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -41,7 +40,7 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.get("/api/dashboard/top-items", managerAuth, async (req, reply) => {
+  fastify.get("/api/dashboard/top-items", staffAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const result = await db.execute(sql`
       SELECT oi.name, SUM(oi.quantity) as total_qty, SUM(oi.quantity * oi.price::numeric) as revenue
@@ -56,7 +55,7 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     return reply.send(result.rows);
   });
 
-  fastify.get("/api/dashboard/hourly-revenue", managerAuth, async (req, reply) => {
+  fastify.get("/api/dashboard/hourly-revenue", staffAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const result = await db.execute(sql`
       SELECT

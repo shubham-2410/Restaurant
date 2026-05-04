@@ -1,3 +1,69 @@
+// ─── Admin ───────────────────────────────────────────────────────────────────
+
+export type AdminRole = "super_admin" | "support";
+
+export interface Admin {
+  id: number;
+  name: string;
+  email: string;
+  role: AdminRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAuthResponse {
+  token: string;
+  admin: Admin;
+}
+
+export interface TenantStats {
+  users: number;
+  orders: number;
+  totalRevenue: number;
+}
+
+export interface TenantWithStats extends Tenant {
+  stats: TenantStats;
+}
+
+export interface TenantDetail extends Tenant {
+  staff: Pick<User, "id" | "name" | "email" | "role" | "isActive" | "createdAt">[];
+  stats: {
+    totalOrders: number;
+    totalRevenue: number;
+    last30DaysRevenue: number;
+    staffCount: number;
+  };
+}
+
+export interface AdminPlatformStats {
+  restaurants: {
+    total: number;
+    active: number;
+    inactive: number;
+    newThisMonth: number;
+  };
+  today: {
+    orders: number;
+    revenue: number;
+  };
+  allTime: {
+    revenue: number;
+  };
+  monthlyRevenue: {
+    month: string;
+    revenue: number;
+    orders: number;
+  }[];
+}
+
+export interface AdminCreateTenantResponse {
+  tenant: Tenant;
+  owner: Omit<User, "passwordHash">;
+  temporaryPassword: string;
+}
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface Tenant {

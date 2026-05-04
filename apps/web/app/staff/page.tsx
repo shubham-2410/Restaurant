@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaffModal } from "@/components/staff/staff-modal";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
 const roleMeta: Record<string, { label: string; variant: "purple" | "info" | "success" | "warning" | "default"; color: string }> = {
@@ -21,9 +22,13 @@ const roleMeta: Record<string, { label: string; variant: "purple" | "info" | "su
 
 export default function StaffPage() {
   const { success, error } = useToast();
+  const { user } = useAuth();
   const [staff, setStaff] = useState<User[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+
+  const role = user?.role ?? "";
+  const canManage = ["owner", "manager"].includes(role);
 
   const load = useCallback(() => {
     api.users.list().then(setStaff).catch(() => {});
@@ -58,9 +63,11 @@ export default function StaffPage() {
               {staff.length} members · <span className="text-emerald-600 font-medium">{active} active</span>
             </p>
           </div>
-          <Button variant="primary" onClick={() => { setEditUser(null); setModalOpen(true); }}>
-            <Plus className="w-4 h-4" /> Add Staff
-          </Button>
+          {canManage && (
+            <Button variant="primary" onClick={() => { setEditUser(null); setModalOpen(true); }}>
+              <Plus className="w-4 h-4" /> Add Staff
+            </Button>
+          )}
         </div>
 
         {staff.length === 0 ? (
@@ -69,45 +76,42 @@ export default function StaffPage() {
             title="No staff members yet"
             description="Add your team members and assign their roles."
             action={
-              <Button variant="primary" onClick={() => { setEditUser(null); setModalOpen(true); }}>
-                <Plus className="w-4 h-4" /> Add Staff
-              </Button>
+              canManage ? (
+                <Button variant="primary" onClick={() => { setEditUser(null); setModalOpen(true); }}>
+                  <Plus className="w-4 h-4" /> Add Staff
+                </Button>
+              ) : undefined
             }
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {staff.map((user) => {
-              const meta = roleMeta[user.role] ?? roleMeta.waiter;
+            {staff.map((member) => {
+              const meta = roleMeta[member.role] ?? roleMeta.waiter;
               return (
                 <div
-                  key={user.id}
+                  key={member.id}
                   className={cn(
                     "bg-white border rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200",
-                    user.isActive ? "border-slate-200" : "border-slate-100 opacity-60",
+                    member.isActive ? "border-slate-200" : "border-slate-100 opacity-60",
                   )}
                 >
-                  {/* Role color bar */}
                   <div className={cn("h-1.5 bg-gradient-to-r", meta.color)} />
-
                   <div className="p-5">
                     <div className="flex items-start gap-3 mb-4">
-                      {/* Avatar */}
                       <div className={cn(
                         "w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm",
                         meta.color,
                       )}>
-                        <span className="text-xl font-bold text-white">
-                          {user.name[0].toUpperCase()}
-                        </span>
+                        <span className="text-xl font-bold text-white">{member.name[0].toUpperCase()}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 truncate leading-tight">{user.name}</p>
+                        <p className="font-bold text-slate-900 truncate leading-tight">{member.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant={meta.variant}>
                             <Shield className="w-2.5 h-2.5 mr-0.5" />
                             {meta.label}
                           </Badge>
-                          {!user.isActive && <Badge variant="cancelled">Inactive</Badge>}
+                          {!member.isActive && <Badge variant="cancelled">Inactive</Badge>}
                         </div>
                       </div>
                     </div>
@@ -115,36 +119,38 @@ export default function StaffPage() {
                     <div className="space-y-1.5 text-xs text-slate-500 mb-4">
                       <div className="flex items-center gap-2">
                         <Mail className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                        <span className="truncate">{user.email}</span>
+                        <span className="truncate">{member.email}</span>
                       </div>
-                      {user.phone && (
+                      {member.phone && (
                         <div className="flex items-center gap-2">
                           <Phone className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                          <span>{user.phone}</span>
+                          <span>{member.phone}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => { setEditUser(user); setModalOpen(true); }}
-                      >
-                        <Pencil className="w-3.5 h-3.5" /> Edit
-                      </Button>
-                      {user.role !== "owner" && (
+                    {canManage && (
+                      <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="hover:text-red-600 hover:bg-red-50 shrink-0"
-                          onClick={() => deleteUser(user.id)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => { setEditUser(member); setModalOpen(true); }}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Pencil className="w-3.5 h-3.5" /> Edit
                         </Button>
-                      )}
-                    </div>
+                        {member.role !== "owner" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:text-red-600 hover:bg-red-50 shrink-0"
+                            onClick={() => deleteUser(member.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -153,12 +159,14 @@ export default function StaffPage() {
         )}
       </div>
 
-      <StaffModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSaved={load}
-        user={editUser}
-      />
+      {canManage && (
+        <StaffModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSaved={load}
+          user={editUser}
+        />
+      )}
     </AppLayout>
   );
 }

@@ -15,6 +15,12 @@ import dashboardRoutes from "./routes/dashboard.js";
 import userRoutes from "./routes/users.js";
 import sseRoutes from "./routes/sse.js";
 
+// Admin routes
+import adminAuthRoutes from "./routes/admin/auth.js";
+import adminTenantRoutes from "./routes/admin/tenants.js";
+import adminStatsRoutes from "./routes/admin/stats.js";
+import adminAdminsRoutes from "./routes/admin/admins.js";
+
 const fastify = Fastify({
   logger: {
     transport:
@@ -28,7 +34,10 @@ await fastify.register(helmet, { contentSecurityPolicy: false });
 await fastify.register(cors, {
   origin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(",")
-    : ["http://localhost:3000", "http://localhost:3001"],
+    : [
+        "http://localhost:3000",  // web app
+        "http://localhost:3001",  // admin app
+      ],
   credentials: true,
 });
 await fastify.register(jwt, {
@@ -38,6 +47,7 @@ await fastify.register(rateLimit, { max: 300, timeWindow: "1 minute" });
 
 fastify.get("/api/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
+// Restaurant routes
 await fastify.register(authRoutes);
 await fastify.register(menuRoutes);
 await fastify.register(tableRoutes);
@@ -47,6 +57,12 @@ await fastify.register(billingRoutes);
 await fastify.register(dashboardRoutes);
 await fastify.register(userRoutes);
 await fastify.register(sseRoutes);
+
+// Admin routes (platform-level)
+await fastify.register(adminAuthRoutes);
+await fastify.register(adminTenantRoutes);
+await fastify.register(adminStatsRoutes);
+await fastify.register(adminAdminsRoutes);
 
 fastify.setErrorHandler((error: FastifyError, _request, reply) => {
   if (error.name === "ZodError") {

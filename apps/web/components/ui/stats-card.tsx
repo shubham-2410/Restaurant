@@ -1,34 +1,38 @@
-import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
 interface StatsCardProps {
-  label: string;
-  value: string | number;
-  icon: LucideIcon;
+  label:      string;
+  value:      string | number;
+  icon:       LucideIcon;
   iconColor?: string;
-  iconBg?: string;
+  iconBg?:    string;
+  accent?:    "orange" | "emerald" | "blue" | "purple" | "red";
   trend?: { value: number; label: string };
   className?: string;
 }
 
-export function StatsCard({ label, value, icon: Icon, iconColor = "text-orange-500", iconBg = "bg-orange-50", trend, className }: StatsCardProps) {
+const accentMap: Record<string, string> = {
+  orange:  "stat-card--orange",
+  emerald: "stat-card--emerald",
+  blue:    "stat-card--blue",
+  purple:  "stat-card--purple",
+  red:     "stat-card--red",
+};
+
+export function StatsCard({ label, value, icon: Icon, iconColor = "text-orange-500", iconBg = "bg-orange-50", accent = "orange", trend, className = "" }: StatsCardProps) {
+  const accentClass = accentMap[accent] ?? "stat-card--orange";
   return (
-    <div className={cn("bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all duration-200", className)}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
-          <Icon className={cn("w-5 h-5", iconColor)} />
-        </div>
-        {trend && (
-          <span className={cn(
-            "text-xs font-semibold px-2 py-0.5 rounded-full",
-            trend.value >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600",
-          )}>
-            {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}%
-          </span>
-        )}
+    <div className={`stat-card ${accentClass} ${className}`}>
+      {trend && (
+        <span className={`stat-card__trend ${trend.value >= 0 ? "stat-card__trend--up" : "stat-card__trend--down"}`}>
+          {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}%
+        </span>
+      )}
+      <div className={`stat-card__icon-wrap ${iconBg}`}>
+        <Icon className={`w-5 h-5 ${iconColor}`} />
       </div>
-      <p className="text-2xl font-bold text-slate-900 tabular-nums leading-none mb-1.5">{value}</p>
-      <p className="text-xs text-slate-500 font-medium">{label}</p>
+      <p className="stat-card__value">{value}</p>
+      <p className="stat-card__label">{label}</p>
     </div>
   );
 }

@@ -3,16 +3,16 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { orders, orderItems, restaurantTables, menuItems, kots, kotItems } from "../db/schema/index.js";
 import { CreateOrderSchema, UpdateOrderSchema } from "@restaurant/shared";
-import { authenticate, getTenantId, getUserId } from "../lib/auth.js";
+import { authenticate, getTenantId, getUserId, getRole } from "../lib/auth.js";
 import { floorStaff, cashierUp, allStaff } from "../lib/rbac.js";
 import { broadcastOrderUpdate } from "./sse.js";
 
 export default async function orderRoutes(fastify: FastifyInstance) {
-  const staffAuth  = { preHandler: [authenticate, allStaff] };
-  const floorAuth  = { preHandler: [authenticate, floorStaff] };
+  const staffAuth   = { preHandler: [authenticate, allStaff] };
+  const floorAuth   = { preHandler: [authenticate, floorStaff] };
   const cashierAuth = { preHandler: [authenticate, cashierUp] };
 
-  // List orders
+  // List orders — all staff can view all orders (waiters see each other's orders)
   fastify.get("/api/orders", staffAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const query = req.query as { status?: string };
@@ -25,7 +25,7 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     return reply.send(filtered);
   });
 
-  // Single order
+  // Single order — all staff can view
   fastify.get("/api/orders/:id", staffAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const { id } = req.params as { id: string };
@@ -37,7 +37,7 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     return reply.send(order);
   });
 
-  // Create order
+  // Create order — floor staff (waiters, cashiers, managers, owners)
   fastify.post("/api/orders", floorAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -60,7 +60,6 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     );
 
     const total = subtotal + gstAmount;
-    // assignedUserId lets you assign a waiter; defaults to the logged-in user
     const assignedUserId = body.assignedUserId ?? userId;
 
     const [order] = await db
@@ -119,16 +118,22 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     return reply.status(201).send(fullOrder);
   });
 
-  // Update order status / notes / assigned waiter
+  // Update order — status changes require cashier+; waiter assignment open to floor staff
   fastify.put("/api/orders/:id", floorAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const { id } = req.params as { id: string };
+    const role = getRole(req);
     const body = UpdateOrderSchema.parse(req.body);
 
+    // Waiters and kitchen staff cannot change order status
+    if (body.status !== undefined && !["owner", "manager", "cashier"].includes(role)) {
+      return reply.status(403).send({ message: "Only cashiers and above can change order status" });
+    }
+
     const updatePayload: Record<string, unknown> = { updatedAt: new Date() };
-    if (body.status    !== undefined) updatePayload.status = body.status;
-    if (body.notes     !== undefined) updatePayload.notes  = body.notes;
-    if (body.assignedUserId !== undefined) updatePayload.userId = body.assignedUserId;
+    if (body.status           !== undefined) updatePayload.status = body.status;
+    if (body.notes            !== undefined) updatePayload.notes  = body.notes;
+    if (body.assignedUserId   !== undefined) updatePayload.userId = body.assignedUserId;
 
     const [updated] = await db
       .update(orders)
@@ -156,7 +161,7 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     return reply.send(full);
   });
 
-  // Transfer table
+  // Transfer table — floor staff
   fastify.post("/api/orders/:id/transfer-table", floorAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const { id } = req.params as { id: string };
@@ -183,7 +188,7 @@ export default async function orderRoutes(fastify: FastifyInstance) {
     return reply.send(updated);
   });
 
-  // Void order
+  // Void order — cashier+
   fastify.post("/api/orders/:id/void", cashierAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const { id } = req.params as { id: string };

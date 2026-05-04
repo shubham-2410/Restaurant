@@ -43,6 +43,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { user } = useAuth();
   const { success, error } = useToast();
 
+  const role = user?.role ?? "";
+  const canManage = ["owner", "manager", "cashier"].includes(role);
+
   const [order, setOrder] = useState<Order | null>(null);
   const [staff, setStaff] = useState<User[]>([]);
   const [bill, setBill] = useState<Bill | null>(null);
@@ -56,18 +59,25 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [o, staffList, allBills] = await Promise.all([
+      const [o, staffList] = await Promise.all([
         api.orders.get(parseInt(id)),
         api.users.list(),
-        api.billing.list(),
       ]);
       setOrder(o);
       setStaff(staffList.filter((u) => u.isActive));
-      const existing = allBills.find((b) => b.orderId === o.id) ?? null;
-      setBill(existing);
+
+      // Billing is restricted to cashier+ — silently skip for waiters/kitchen
+      if (canManage) {
+        try {
+          const allBills = await api.billing.list();
+          setBill(allBills.find((b) => b.orderId === o.id) ?? null);
+        } catch {
+          setBill(null);
+        }
+      }
     } catch { error("Failed to load order"); }
     finally { setLoading(false); }
-  }, [id, error]);
+  }, [id, error, canManage]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -123,8 +133,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const gst      = parseFloat(order.gstAmount);
   const total    = parseFloat(order.total);
 
-  // Waiter = userId on the order
-  const assignedWaiter = staff.find((u) => u.id === (order as Order & { user?: User }).user?.id ?? order.userId);
+  const assignedWaiterName = (order as Order & { user?: { name: string } }).user?.name;
 
   return (
     <AppLayout>
@@ -155,23 +164,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {bill && (
+            {bill && canManage && (
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="w-3.5 h-3.5" /> Print
               </Button>
             )}
-            {canBillOrPay && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setShowPayment(true)}
-                className="gap-2"
-              >
+            {canBillOrPay && canManage && (
+              <Button variant="primary" size="sm" onClick={() => setShowPayment(true)} className="gap-2">
                 <CreditCard className="w-3.5 h-3.5" />
                 {bill?.paymentStatus === "paid" ? "Paid ✓" : bill ? "Collect Payment" : "Checkout"}
               </Button>
             )}
-            {canVoid && (
+            {canVoid && canManage && (
               <Button variant="danger" size="sm" onClick={voidOrder} loading={voidLoading}>
                 <XCircle className="w-3.5 h-3.5" /> Void
               </Button>
@@ -185,31 +189,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           {/* Items card */}
           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">
-                {order.items?.length ?? 0} Items
-              </h2>
-              <span className="text-xs text-slate-400 capitalize">
-                {order.orderType.replace("_", " ")}
-              </span>
+              <h2 className="font-bold text-slate-900">{order.items?.length ?? 0} Items</h2>
+              <span className="text-xs text-slate-400 capitalize">{order.orderType.replace("_", " ")}</span>
             </div>
-
             <div>
               {order.items?.map((item, i) => (
                 <div
                   key={item.id}
-                  className={cn(
-                    "px-5 py-4 flex items-start gap-3",
-                    i < (order.items?.length ?? 0) - 1 && "border-b border-slate-50",
-                  )}
+                  className={cn("px-5 py-4 flex items-start gap-3", i < (order.items?.length ?? 0) - 1 && "border-b border-slate-50")}
                 >
                   <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-bold text-slate-500">{item.quantity}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 text-sm leading-tight">{item.name}</p>
-                    {item.notes && (
-                      <p className="text-xs text-slate-400 italic mt-0.5">"{item.notes}"</p>
-                    )}
+                    {item.notes && <p className="text-xs text-slate-400 italic mt-0.5">"{item.notes}"</p>}
                     <p className="text-xs text-slate-400 mt-0.5">{formatCurrency(parseFloat(item.price))} each</p>
                   </div>
                   <span className="font-bold text-slate-900 text-sm tabular-nums shrink-0">
@@ -218,8 +212,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               ))}
             </div>
-
-            {/* Totals */}
             <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-orange-50/30 border-t border-slate-100 space-y-2">
               <div className="flex justify-between text-sm text-slate-500">
                 <span>Subtotal</span><span className="tabular-nums">{formatCurrency(subtotal)}</span>
@@ -244,8 +236,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           {/* Right column */}
           <div className="space-y-4">
 
-            {/* Status action */}
-            {nextStep && !["cancelled", "billed"].includes(order.status) && (
+            {/* Status action — cashier+ only */}
+            {nextStep && !["cancelled", "billed"].includes(order.status) && canManage && (
               <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg shadow-orange-200">
                 <p className="text-xs font-bold opacity-75 mb-1">NEXT STEP</p>
                 <p className="text-sm font-semibold mb-3 opacity-90">Move order to next stage</p>
@@ -261,76 +253,97 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Payment/bill status */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Payment</p>
-              {bill?.paymentStatus === "paid" ? (
-                <div className="flex items-center gap-2 text-emerald-600">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <div>
-                    <p className="font-bold text-sm">Paid</p>
-                    <p className="text-xs capitalize text-emerald-500">{bill.paymentMethod?.replace("_", " ")}</p>
+            {/* Read-only status note for waiters/kitchen */}
+            {!canManage && !["cancelled", "billed"].includes(order.status) && (
+              <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</p>
+                <Badge variant={cfg.badgeVariant} dot>{cfg.label}</Badge>
+                <p className="text-xs text-slate-400 mt-2">Status is managed by cashier or manager.</p>
+              </div>
+            )}
+
+            {/* Payment — cashier+ only */}
+            {canManage && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Payment</p>
+                {bill?.paymentStatus === "paid" ? (
+                  <div className="flex items-center gap-2 text-emerald-600">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <div>
+                      <p className="font-bold text-sm">Paid</p>
+                      <p className="text-xs capitalize text-emerald-500">{bill.paymentMethod?.replace("_", " ")}</p>
+                    </div>
                   </div>
-                </div>
-              ) : bill ? (
-                <div>
-                  <p className="text-xs text-slate-500 mb-2">{bill.billNumber} · Unpaid</p>
-                  <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
-                    <CreditCard className="w-3.5 h-3.5" /> Collect Payment
-                  </Button>
-                </div>
-              ) : canBillOrPay ? (
-                <div>
-                  <p className="text-xs text-slate-400 mb-3">No bill generated yet</p>
-                  <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
-                    <CreditCard className="w-3.5 h-3.5" /> Generate & Pay
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400">Order voided</p>
-              )}
-            </div>
+                ) : bill ? (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-2">{bill.billNumber} · Unpaid</p>
+                    <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
+                      <CreditCard className="w-3.5 h-3.5" /> Collect Payment
+                    </Button>
+                  </div>
+                ) : canBillOrPay ? (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-3">No bill generated yet</p>
+                    <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
+                      <CreditCard className="w-3.5 h-3.5" /> Generate & Pay
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">Order voided</p>
+                )}
+              </div>
+            )}
 
             {/* Waiter assignment */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Assigned Waiter</p>
-              <div className="relative">
-                <button
-                  onClick={() => setShowWaiterDrop((v) => !v)}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition-colors text-left"
-                >
+              {canManage ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowWaiterDrop((v) => !v)}
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                      <UserCircle className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {assignedWaiterName ?? "Unassigned"}
+                      </p>
+                      <p className="text-xs text-slate-400">Tap to reassign</p>
+                    </div>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform", showWaiterDrop && "rotate-180")} />
+                  </button>
+                  {showWaiterDrop && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
+                      {staff.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => assignWaiter(u.id)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-orange-50 transition-colors text-left border-b border-slate-50 last:border-0"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
+                            {u.name[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900 leading-tight">{u.name}</p>
+                            <p className="text-xs text-slate-400 capitalize">{u.role}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
                     <UserCircle className="w-4 h-4 text-orange-600" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {(order as Order & { user?: { name: string } }).user?.name ?? "Unassigned"}
-                    </p>
-                    <p className="text-xs text-slate-400">Tap to reassign</p>
-                  </div>
-                  <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform", showWaiterDrop && "rotate-180")} />
-                </button>
-
-                {showWaiterDrop && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
-                    {staff.map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => assignWaiter(u.id)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-orange-50 transition-colors text-left border-b border-slate-50 last:border-0"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
-                          {u.name[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900 leading-tight">{u.name}</p>
-                          <p className="text-xs text-slate-400 capitalize">{u.role}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {assignedWaiterName ?? "Unassigned"}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Order meta */}
@@ -352,7 +365,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {showPayment && canBillOrPay && (
+      {showPayment && canBillOrPay && canManage && (
         <PaymentModal
           open={showPayment}
           onClose={() => setShowPayment(false)}

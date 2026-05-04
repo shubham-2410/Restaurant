@@ -5,7 +5,7 @@ import { db } from "../db/index.js";
 import { users } from "../db/schema/index.js";
 import { CreateUserSchema, UpdateUserSchema } from "@restaurant/shared";
 import { authenticate, getTenantId, getUserId } from "../lib/auth.js";
-import { managerUp, ownerOnly } from "../lib/rbac.js";
+import { managerUp, cashierUp, floorStaff, ownerOnly } from "../lib/rbac.js";
 
 const SAFE_COLUMNS = {
   id: users.id,
@@ -20,10 +20,12 @@ const SAFE_COLUMNS = {
 };
 
 export default async function userRoutes(fastify: FastifyInstance) {
+  const floorAuth   = { preHandler: [authenticate, floorStaff] };
   const managerAuth = { preHandler: [authenticate, managerUp] };
-  const ownerAuth = { preHandler: [authenticate, ownerOnly] };
+  const ownerAuth   = { preHandler: [authenticate, ownerOnly] };
 
-  fastify.get("/api/users", managerAuth, async (req, reply) => {
+  // floorStaff: waiters need the staff list to assign themselves in POS
+  fastify.get("/api/users", floorAuth, async (req, reply) => {
     const tenantId = getTenantId(req);
     const all = await db.select(SAFE_COLUMNS).from(users).where(eq(users.tenantId, tenantId)).orderBy(users.name);
     return reply.send(all);
