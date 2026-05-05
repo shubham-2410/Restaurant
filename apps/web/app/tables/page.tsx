@@ -30,7 +30,11 @@ export default function TablesPage() {
     try { setTables(await api.tables.list()); } catch {}
   }, []);
 
-  useEffect(() => { load(); const t = setInterval(load, 20_000); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 20_000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const changeStatus = async (id: number, status: RestaurantTable["status"]) => {
     try {
@@ -63,20 +67,39 @@ export default function TablesPage() {
     occupied:  tables.filter((t) => t.status === "occupied").length,
     reserved:  tables.filter((t) => t.status === "reserved").length,
   };
+
   const filtered = filter === "all" ? tables : tables.filter((t) => t.status === filter);
+
+  const tabs: { key: typeof filter; label: string; dot: string }[] = [
+    { key: "all",       label: "All",       dot: "bg-gray-400" },
+    { key: "available", label: "Available", dot: "bg-emerald-500" },
+    { key: "occupied",  label: "Occupied",  dot: "bg-red-500" },
+    { key: "reserved",  label: "Reserved",  dot: "bg-amber-500" },
+  ];
 
   return (
     <AppLayout>
-      <div className="p-6 h-full flex flex-col">
+      <div className="page-section h-full flex flex-col">
+
+        {/* Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title flex items-center">
-              <span className="section-bar" />Tables
+            <h1 className="page-title">
+              <span className="page-title-bar" />
+              Tables
             </h1>
-            <div className="flex items-center gap-4 text-xs text-slate-500 mt-1 pl-4">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />{counts.available} available</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" />{counts.occupied} occupied</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" />{counts.reserved} reserved</span>
+            {/* Quick summary pills */}
+            <div className="flex items-center gap-3 mt-1.5" style={{ paddingLeft: "13px" }}>
+              {[
+                { label: `${counts.available} available`, color: "bg-emerald-500" },
+                { label: `${counts.occupied} occupied`,  color: "bg-red-500" },
+                { label: `${counts.reserved} reserved`,  color: "bg-amber-500" },
+              ].map((s) => (
+                <span key={s.label} className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                  <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                  {s.label}
+                </span>
+              ))}
             </div>
           </div>
           {canAddTable && (
@@ -86,30 +109,41 @@ export default function TablesPage() {
           )}
         </div>
 
+        {/* Filter tabs */}
         <div className="filter-tabs mb-5">
-          {(["all","available","occupied","reserved"] as const).map((f) => (
+          {tabs.map((t) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`filter-tab${filter === f ? " filter-tab--active" : ""}`}
+              key={t.key}
+              onClick={() => setFilter(t.key)}
+              className={`filter-tab${filter === t.key ? " filter-tab--active" : ""}`}
             >
-              {f}
-              <span className="filter-tab__count">{counts[f]}</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${t.dot}`} />
+              {t.label}
+              <span className="filter-tab__badge">{counts[t.key]}</span>
             </button>
           ))}
         </div>
 
+        {/* Grid */}
         {tables.length === 0 ? (
           <EmptyState
             icon={Grid2X2}
             title="No tables yet"
             description={canAddTable ? "Add tables to start managing your floor layout." : "No tables have been added yet."}
-            action={canAddTable ? <Button variant="primary" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4" />Add Table</Button> : undefined}
+            action={canAddTable ? (
+              <Button variant="primary" onClick={() => setAddOpen(true)}>
+                <Plus className="w-4 h-4" /> Add Table
+              </Button>
+            ) : undefined}
           />
         ) : filtered.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">No {filter} tables</div>
+          <EmptyState
+            icon={Grid2X2}
+            title={`No ${filter} tables`}
+            description="Try a different filter."
+          />
         ) : (
-          <div className="tables-grid content-start">
+          <div className="tables-grid">
             {filtered.map((table) => (
               <TableCard
                 key={table.id}
@@ -123,6 +157,7 @@ export default function TablesPage() {
         )}
       </div>
 
+      {/* Add table modal */}
       {canAddTable && (
         <Modal
           open={addOpen}
@@ -137,8 +172,22 @@ export default function TablesPage() {
           }
         >
           <div className="space-y-4">
-            <Input label="Table Name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. T1, Table 1, Terrace-A" autoFocus />
-            <Input label="Seating Capacity" type="number" min="1" max="50" value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))} />
+            <Input
+              label="Table Name"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. T1, Table 1, Terrace-A"
+              autoFocus
+            />
+            <Input
+              label="Seating Capacity"
+              type="number"
+              min="1"
+              max="50"
+              value={form.capacity}
+              onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
+            />
           </div>
         </Modal>
       )}

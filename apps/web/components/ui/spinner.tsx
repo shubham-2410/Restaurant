@@ -15,21 +15,22 @@ export function Spinner({ size = "md", className }: SpinnerProps) {
 
 export function PageLoader({ text }: { text?: string }) {
   return (
-    <div className="flex flex-col h-full items-center justify-center gap-3">
+    <div className="flex flex-col h-full items-center justify-center gap-3 py-20">
       <Spinner size="lg" />
-      {text && <p className="text-sm text-slate-400">{text}</p>}
+      {text && <p className="text-sm text-gray-400">{text}</p>}
     </div>
   );
 }
 
+// Keep SkeletonCard for backwards compat - now uses CSS skeleton
 export function SkeletonCard() {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 animate-pulse">
+    <div className="bg-white border border-gray-200 rounded-2xl p-5">
       <div className="flex items-start justify-between mb-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-200" />
+        <div className="skeleton w-10 h-10 rounded-xl" />
       </div>
-      <div className="h-7 bg-slate-200 rounded w-1/2 mb-2" />
-      <div className="h-3 bg-slate-100 rounded w-3/4" />
+      <div className="skeleton h-7 rounded w-1/2 mb-2" />
+      <div className="skeleton h-3 rounded w-3/4" />
     </div>
   );
 }

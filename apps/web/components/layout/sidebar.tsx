@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, ShoppingBag, UtensilsCrossed, Grid2X2,
   ChefHat, Receipt, Users, Settings, LogOut, ClipboardList,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import type { Role } from "@/lib/rbac";
 
@@ -36,18 +37,20 @@ const roleColor: Record<string, string> = {
   kitchen: "bg-orange-500",
 };
 
-const roleLabel: Record<string, string> = {
-  owner: "Owner", manager: "Manager", cashier: "Cashier", waiter: "Waiter", kitchen: "Kitchen",
-};
+interface SidebarProps {
+  mode: "full" | "mini";
+  mobileOpen: boolean;
+  onToggle: () => void;
+  onMobileClose: () => void;
+}
 
-interface SidebarProps { open: boolean; onToggle: () => void; }
-
-export function Sidebar({ open, onToggle }: SidebarProps) {
+export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router   = useRouter();
   const { user, logout } = useAuth();
   const role = (user?.role ?? "") as Role;
   const visibleNav = navItems.filter((item) => item.roles.includes(role));
+  const isMini = mode === "mini";
 
   const handleLogout = async () => {
     try { await api.auth.logout(); } catch {}
@@ -55,24 +58,35 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
     router.push("/login");
   };
 
+  const sidebarClass = [
+    "sidebar",
+    isMini ? "sidebar--mini" : "",
+    mobileOpen ? "sidebar--mobile-open" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <aside className={`sidebar ${open ? "sidebar--open" : "sidebar--closed"}`}>
+    <aside className={sidebarClass}>
       <div className="sidebar__inner">
 
-        <div className="sidebar__logo">
-          <button className="sidebar__toggle" onClick={onToggle} title="Toggle sidebar">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <line x1="2" y1="4"  x2="14" y2="4"  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="2" y1="8"  x2="14" y2="8"  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
-          <div className="sidebar__brand-icon">
-            <UtensilsCrossed className="sidebar__nav-icon" style={{ color: '#fff' }} />
+        {/* ── Header / brand ── */}
+        <div className="sidebar__header">
+          <div className="sidebar__logo-icon">
+            <UtensilsCrossed className="w-4 h-4 text-white" />
           </div>
           <span className="sidebar__brand-name">RestaurantOS</span>
+          <button
+            className="sidebar__toggle"
+            onClick={onToggle}
+            title={isMini ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isMini
+              ? <PanelLeftOpen  className="w-4 h-4" />
+              : <PanelLeftClose className="w-4 h-4" />
+            }
+          </button>
         </div>
 
+        {/* ── Restaurant name ── */}
         {user?.tenant && (
           <div className="sidebar__tenant">
             <p className="sidebar__tenant-label">Restaurant</p>
@@ -80,6 +94,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           </div>
         )}
 
+        {/* ── Navigation ── */}
         <nav className="sidebar__nav">
           {visibleNav.map((item) => {
             const Icon   = item.icon;
@@ -88,29 +103,30 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                data-label={item.label}
                 className={`sidebar__nav-item${active ? " sidebar__nav-item--active" : ""}`}
               >
                 <Icon className="sidebar__nav-icon" />
-                {item.label}
-                {active && <span className="sidebar__nav-dot" />}
+                <span className="sidebar__nav-label">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
+        {/* ── Footer / user ── */}
         <div className="sidebar__footer">
           <div className="sidebar__user">
             <div className={`sidebar__avatar ${roleColor[role] ?? "bg-slate-600"}`}>
               {user?.name?.[0]?.toUpperCase() ?? "U"}
             </div>
-            <div className="min-w-0">
+            <div className="sidebar__user-info">
               <p className="sidebar__user-name">{user?.name}</p>
-              <p className="sidebar__user-role">{roleLabel[role] ?? role}</p>
+              <p className="sidebar__user-role">{role}</p>
             </div>
           </div>
           <button className="sidebar__logout" onClick={handleLogout}>
             <LogOut className="sidebar__nav-icon" />
-            Sign out
+            <span className="sidebar__logout-label">Sign out</span>
           </button>
         </div>
 

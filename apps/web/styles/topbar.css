@@ -1,0 +1,74 @@
+/* ══════════════════════════════════════════
+   TOP BAR — shown on mobile always,
+   and on desktop when sidebar is mini/hidden
+   ══════════════════════════════════════════ */
+
+.topbar {
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-xs);
+  z-index: 30;
+}
+
+.topbar__menu-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  flex-shrink: 0;
+}
+.topbar__menu-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+
+.topbar__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--bdr);
+  flex-shrink: 0;
+}
+
+.topbar__brand {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.topbar__spacer { flex: 1; }
+
+.topbar__clock {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-2);
+  padding: 5px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--bdr);
+  white-space: nowrap;
+}
+
+/* On mobile, topbar is always visible */
+.topbar--always { display: flex; }
+
+@media (max-width: 768px) {
+  .topbar__clock { display: none; }
+}
+
+/* Show mobile topbar only on small screens */
+@media (max-width: 768px) {
+  .topbar--mobile-only { display: flex !important; }
+}
