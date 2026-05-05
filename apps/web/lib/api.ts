@@ -4,7 +4,7 @@ import type {
   Order, RestaurantTable, TopItem, User, UserWithTenant,
 } from "@restaurant/shared";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -138,7 +138,8 @@ export const api = {
 export function createSseConnection(onMessage: (data: unknown) => void): () => void {
   const token = getToken();
   if (!token) return () => {};
-  const es = new EventSource(`${API_URL}/api/sse/events?token=${encodeURIComponent(token)}`);
+  const sseBase = API_URL || window.location.origin;
+  const es = new EventSource(`${sseBase}/api/sse/events?token=${encodeURIComponent(token)}`);
   es.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch {} };
   es.onerror = () => { es.close(); };
   return () => es.close();
