@@ -34,7 +34,7 @@ const roleColor: Record<string, string> = {
   manager: "bg-blue-500",
   cashier: "bg-emerald-500",
   waiter:  "bg-amber-500",
-  kitchen: "bg-orange-500",
+  kitchen: "bg-slate-600",
 };
 
 interface SidebarProps {
@@ -73,11 +73,12 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
           <div className="sidebar__logo-icon">
             <UtensilsCrossed className="w-4 h-4 text-white" />
           </div>
-          <span className="sidebar__brand-name">RestaurantOS</span>
+          {!isMini && <span className="sidebar__brand-name">RestaurantOS</span>}
           <button
             className="sidebar__toggle"
             onClick={onToggle}
             title={isMini ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isMini ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isMini
               ? <PanelLeftOpen  className="w-4 h-4" />
@@ -87,7 +88,7 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
         </div>
 
         {/* ── Restaurant name ── */}
-        {user?.tenant && (
+        {!isMini && user?.tenant && (
           <div className="sidebar__tenant">
             <p className="sidebar__tenant-label">Restaurant</p>
             <p className="sidebar__tenant-name">{user.tenant.name}</p>
@@ -95,7 +96,7 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
         )}
 
         {/* ── Navigation ── */}
-        <nav className="sidebar__nav">
+        <nav className="sidebar__nav" aria-label="Main navigation">
           {visibleNav.map((item) => {
             const Icon   = item.icon;
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -104,9 +105,11 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 data-label={item.label}
+                title={isMini ? item.label : undefined}
                 className={`sidebar__nav-item${active ? " sidebar__nav-item--active" : ""}`}
+                aria-current={active ? "page" : undefined}
               >
-                <Icon className="sidebar__nav-icon" />
+                <Icon className="sidebar__nav-icon" aria-hidden="true" />
                 <span className="sidebar__nav-label">{item.label}</span>
               </Link>
             );
@@ -116,7 +119,8 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
         {/* ── Footer / user ── */}
         <div className="sidebar__footer">
           <div className="sidebar__user">
-            <div className={`sidebar__avatar ${roleColor[role] ?? "bg-slate-600"}`}>
+            <div className={`sidebar__avatar ${roleColor[role] ?? "bg-slate-600"}`}
+              aria-hidden="true">
               {user?.name?.[0]?.toUpperCase() ?? "U"}
             </div>
             <div className="sidebar__user-info">
@@ -124,8 +128,13 @@ export function Sidebar({ mode, mobileOpen, onToggle }: SidebarProps) {
               <p className="sidebar__user-role">{role}</p>
             </div>
           </div>
-          <button className="sidebar__logout" onClick={handleLogout}>
-            <LogOut className="sidebar__nav-icon" />
+          <button
+            className="sidebar__logout"
+            onClick={handleLogout}
+            title={isMini ? "Sign out" : undefined}
+            aria-label="Sign out"
+          >
+            <LogOut className="sidebar__nav-icon" aria-hidden="true" />
             <span className="sidebar__logout-label">Sign out</span>
           </button>
         </div>

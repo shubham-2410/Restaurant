@@ -3,28 +3,28 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline" | "success";
-type Size = "sm" | "md" | "lg" | "icon";
+type Size    = "sm" | "md" | "lg" | "icon";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
-  size?: Size;
+  size?:    Size;
   loading?: boolean;
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary:   "bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed",
+  primary:   "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed",
   secondary: "bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-950 shadow-sm disabled:opacity-50",
   ghost:     "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40",
-  danger:    "bg-red-500 text-white hover:bg-red-600 active:bg-red-700 shadow-sm disabled:opacity-50",
-  success:   "bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700 shadow-sm disabled:opacity-50",
+  danger:    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm disabled:opacity-50",
+  success:   "bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-sm disabled:opacity-50",
   outline:   "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm disabled:opacity-50",
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm:   "px-3 py-1.5 text-xs rounded-lg gap-1.5 h-8",
-  md:   "px-4 py-2 text-sm rounded-lg gap-2 h-9",
-  lg:   "px-5 py-2.5 text-sm rounded-xl gap-2 h-11",
-  icon: "p-2 rounded-lg",
+  sm:   "px-3 py-1.5 text-xs rounded gap-1.5 h-8",
+  md:   "px-4 py-2 text-sm rounded gap-2 h-9",
+  lg:   "px-5 py-2.5 text-sm rounded gap-2 h-11",
+  icon: "p-2 rounded",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -33,8 +33,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center font-semibold transition-all duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1",
+        "inline-flex items-center justify-center font-semibold transition-all duration-100",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
         "select-none whitespace-nowrap",
         variantStyles[variant],
         sizeStyles[size],

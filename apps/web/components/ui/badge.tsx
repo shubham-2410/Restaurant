@@ -17,7 +17,7 @@ const styles: Record<BadgeVariant, string> = {
   ready:     "bg-emerald-50 text-emerald-700 border border-emerald-200",
   cancelled: "bg-gray-100 text-gray-500 border border-gray-200",
   paid:      "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  unpaid:    "bg-orange-50 text-orange-700 border border-orange-200",
+  unpaid:    "bg-red-50 text-red-700 border border-red-200",
 };
 
 const dotColor: Record<BadgeVariant, string> = {
@@ -32,7 +32,7 @@ const dotColor: Record<BadgeVariant, string> = {
   ready:     "bg-emerald-500",
   cancelled: "bg-gray-400",
   paid:      "bg-emerald-500",
-  unpaid:    "bg-orange-500",
+  unpaid:    "bg-red-500",
 };
 
 interface BadgeProps {

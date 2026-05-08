@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { api } from "@/lib/api";
+import { api, createSseConnection } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { Order } from "@restaurant/shared";
 import { ShoppingBag, RefreshCcw, UtensilsCrossed, Package, Truck, ArrowRight, Clock, Search } from "lucide-react";
@@ -49,6 +49,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<string>("active");
   const [search, setSearch]   = useState("");
+  const loadRef = useRef<() => Promise<void>>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,11 +58,24 @@ export default function OrdersPage() {
     finally { setLoading(false); }
   }, [error]);
 
+  loadRef.current = load;
+
   useEffect(() => {
     load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, [load]);
+
+    /* SSE for real-time sync — kitchen status changes immediately reflect here */
+    const closeSSE = createSseConnection((data) => {
+      const msg = data as { type: string };
+      if (["order_created", "order_updated", "kot_status"].includes(msg.type)) {
+        loadRef.current?.();
+      }
+    });
+
+    /* Fallback poll every 15s in case SSE drops */
+    const poll = setInterval(() => { loadRef.current?.(); }, 15_000);
+
+    return () => { closeSSE(); clearInterval(poll); };
+  }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tabs = [
     { key: "active",    label: "Active",    count: orders.filter((o) => !["cancelled","billed"].includes(o.status)).length },
@@ -91,37 +105,43 @@ export default function OrdersPage() {
     <AppLayout>
       <div className="h-full flex flex-col">
 
-        {/* ── Sticky header ── */}
-        <div className="bg-white border-b border-gray-200 px-5 py-4 shrink-0 shadow-sm">
-          <div className="page-header" style={{ marginBottom: "14px" }}>
+        {/* Header */}
+        <div className="border-b shrink-0"
+          style={{ background: "var(--surface)", borderColor: "var(--bdr)", padding: "16px 20px 14px" }}>
+          <div className="page-header" style={{ marginBottom: 14 }}>
             <div>
               <h1 className="page-title">
                 <span className="page-title-bar" />
                 Orders
               </h1>
-              <p className="page-subtitle" style={{ paddingLeft: "13px" }}>
+              <p className="page-subtitle" style={{ paddingLeft: 13 }}>
                 {orders.length} total today
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={load} loading={loading}>
-              <RefreshCcw className="w-3.5 h-3.5" /> Refresh
+              <RefreshCcw className="w-3.5 h-3.5" />
+              Refresh
             </Button>
           </div>
 
-          {/* Search + Tabs row */}
+          {/* Search + filter tabs */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                style={{ color: "var(--text-faint)" }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by order #, table, item…"
-                className="w-full sm:w-64 pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-colors"
+                className="w-full sm:w-60 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                style={{
+                  border: "1px solid var(--bdr)",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--surface-2)",
+                  color: "var(--text-primary)",
+                }}
               />
             </div>
-
-            {/* Filter tabs */}
             <div className="filter-tabs flex-1 flex-wrap">
               {tabs.map((t) => (
                 <button
@@ -137,14 +157,14 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* ── Cards grid ── */}
+        {/* Grid */}
         <div className="flex-1 overflow-y-auto page-section pt-5">
           {loading && filtered.length === 0 ? (
             <div className="responsive-grid-orders">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white border border-gray-100 rounded-2xl p-4">
+                <div key={i} className="bg-white border rounded-lg p-4" style={{ borderColor: "var(--bdr)" }}>
                   <div className="flex gap-3 mb-3">
-                    <div className="skeleton w-8 h-8 rounded-xl" />
+                    <div className="skeleton w-8 h-8 rounded-lg" />
                     <div className="flex-1">
                       <div className="skeleton h-4 rounded w-1/3 mb-1" />
                       <div className="skeleton h-3 rounded w-1/2" />
@@ -164,28 +184,27 @@ export default function OrdersPage() {
           ) : (
             <div className="responsive-grid-orders">
               {filtered.map((order) => {
-                const cfg      = statusCfg[order.status] ?? statusCfg.pending;
-                const TypeIcon = typeIcon[order.orderType] ?? UtensilsCrossed;
-                const statusClass = orderCardStatus[order.status] ?? "";
-                const waiterName  = (order as Order & { user?: { name: string } }).user?.name;
+                const cfg       = statusCfg[order.status] ?? statusCfg.pending;
+                const TypeIcon  = typeIcon[order.orderType] ?? UtensilsCrossed;
+                const statusCls = orderCardStatus[order.status] ?? "";
+                const waiterName = (order as Order & { user?: { name: string } }).user?.name;
                 return (
                   <button
                     key={order.id}
                     onClick={() => router.push(`/orders/${order.id}`)}
-                    className={`order-card ${statusClass}`}
+                    className={`order-card ${statusCls}`}
                   >
                     {/* Header row */}
                     <div className="flex items-center justify-between mb-2.5 pl-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                          <TypeIcon className="w-4 h-4 text-gray-500" />
+                        <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+                          style={{ background: "var(--surface-3)" }}>
+                          <TypeIcon className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
                         </div>
                         <div className="text-left">
-                          <p className="font-bold text-gray-900 text-sm leading-tight">#{order.id}</p>
-                          <p className="text-xs text-gray-400 capitalize">
-                            {order.table
-                              ? order.table.name
-                              : order.orderType.replace("_", " ")}
+                          <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-primary)" }}>#{order.id}</p>
+                          <p className="text-xs capitalize" style={{ color: "var(--text-faint)" }}>
+                            {order.table ? order.table.name : order.orderType.replace("_", " ")}
                           </p>
                         </div>
                       </div>
@@ -193,30 +212,35 @@ export default function OrdersPage() {
                     </div>
 
                     {/* Items preview */}
-                    <p className="text-xs text-gray-400 mb-3 line-clamp-1 text-left pl-2">
+                    <p className="text-xs mb-3 line-clamp-1 text-left pl-2"
+                      style={{ color: "var(--text-faint)" }}>
                       {order.items?.map((i) => i.name).join(", ") ?? "No items"}
                     </p>
 
                     {/* Footer */}
                     <div className="flex items-end justify-between pl-2">
                       <div className="text-left">
-                        <p className="text-xs text-gray-400">{order.items?.length ?? 0} items</p>
-                        <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">
+                        <p className="text-xs" style={{ color: "var(--text-faint)" }}>{order.items?.length ?? 0} items</p>
+                        <p className="text-lg font-bold tabular-nums leading-tight"
+                          style={{ color: "var(--text-primary)" }}>
                           {formatCurrency(parseFloat(order.total))}
                         </p>
                       </div>
                       <div className="text-right">
                         {waiterName && (
-                          <p className="text-xs text-gray-400 mb-0.5">👤 {waiterName.split(" ")[0]}</p>
+                          <p className="text-xs mb-0.5" style={{ color: "var(--text-faint)" }}>
+                            👤 {waiterName.split(" ")[0]}
+                          </p>
                         )}
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <div className="flex items-center gap-1 text-xs" style={{ color: "var(--text-faint)" }}>
                           <Clock className="w-3 h-3" />
                           {elapsed(order.createdAt)}
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs text-orange-500 font-semibold pl-2">
+                    <div className="mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-semibold pl-2"
+                      style={{ borderColor: "var(--bdr-light)", color: "var(--brand)" }}>
                       <span>View details</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </div>

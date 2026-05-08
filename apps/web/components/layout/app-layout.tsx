@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar } from "./sidebar";
 import { MobileNav } from "./mobile-nav";
-import { UtensilsCrossed } from "lucide-react";
+import { UtensilsCrossed, Menu } from "lucide-react";
 import { canAccess, getHome } from "@/lib/rbac";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +12,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
 
-  // sidebar: "full" | "mini" — desktop only
   const [sidebarMode, setSidebarMode] = useState<"full" | "mini">(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("sidebar_mode") as "full" | "mini") ?? "full";
@@ -20,20 +19,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return "full";
   });
 
-  // mobile sidebar open state
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleSidebar = () => {
-    if (window.innerWidth <= 768) {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
       setMobileOpen((v) => !v);
     } else {
       const next = sidebarMode === "full" ? "mini" : "full";
       setSidebarMode(next);
-      localStorage.setItem("sidebar_mode", next);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sidebar_mode", next);
+      }
     }
   };
 
-  // Close mobile nav on route change
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
@@ -62,11 +61,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           className="sidebar-overlay"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
@@ -81,12 +80,43 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile-only top bar */}
         <MobileTopBar onMenuClick={() => setMobileOpen(true)} />
 
+        {/* Desktop mini-mode expand button */}
+        {sidebarMode === "mini" && (
+          <button
+            className="sidebar__expand-btn"
+            onClick={toggleSidebar}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+            style={{
+              display: "flex",
+              position: "fixed",
+              left: "68px",
+              top: "14px",
+              zIndex: 39,
+              width: "26px",
+              height: "26px",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--r-md)",
+              border: "1.5px solid var(--bdr)",
+              background: "var(--surface)",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              boxShadow: "var(--shadow-md)",
+              transition: "all var(--fast) var(--ease)",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <path d="M2 6.5h9M7 3l3.5 3.5L7 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
+
         <div className="app-content">
           {children}
         </div>
       </div>
 
-      {/* Mobile bottom nav */}
       <MobileNav />
     </div>
   );
@@ -100,18 +130,22 @@ function MobileTopBar({ onMenuClick }: { onMenuClick: () => void }) {
   }, []);
 
   return (
-    <header className="topbar topbar--mobile-only" style={{ display: "none" }}>
-      <button className="topbar__menu-btn" onClick={onMenuClick} title="Open menu">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <line x1="2" y1="4"  x2="14" y2="4"  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <line x1="2" y1="8"  x2="14" y2="8"  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
+    <header
+      className="topbar topbar--mobile-only"
+      style={{ display: "none" }}
+      role="banner"
+    >
+      <button
+        className="topbar__menu-btn"
+        onClick={onMenuClick}
+        aria-label="Open navigation menu"
+      >
+        <Menu className="w-4 h-4" aria-hidden="true" />
       </button>
-      <div className="topbar__divider" />
+      <div className="topbar__divider" aria-hidden="true" />
       <span className="topbar__brand">RestaurantOS</span>
       <div className="topbar__spacer" />
-      <div className="topbar__clock">
+      <div className="topbar__clock" aria-live="polite">
         {time.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
       </div>
     </header>

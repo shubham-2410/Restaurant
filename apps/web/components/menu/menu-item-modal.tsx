@@ -173,7 +173,7 @@ export function MenuItemModal({ open, onClose, onSaved, item, categories }: Menu
             id="available"
             checked={form.isAvailable}
             onChange={(e) => setForm((f) => ({ ...f, isAvailable: e.target.checked }))}
-            className="w-4 h-4 accent-orange-500"
+            className="w-4 h-4 accent-blue-600"
           />
           <label htmlFor="available" className="text-sm font-medium text-slate-700">
             Item is available for ordering

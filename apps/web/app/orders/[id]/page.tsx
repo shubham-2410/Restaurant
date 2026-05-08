@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, use, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { api } from "@/lib/api";
+import { api, createSseConnection } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { Order, User, Bill } from "@restaurant/shared";
 import {
@@ -20,7 +20,11 @@ import { PrintBill, triggerPrint } from "@/components/billing/print-bill";
 import { PaymentModal } from "@/components/billing/payment-modal";
 import { cn } from "@/lib/utils";
 
-const statusConfig: Record<string, { label: string; badgeVariant: "pending" | "preparing" | "ready" | "cancelled" | "paid" | "default"; icon: typeof Clock }> = {
+const statusConfig: Record<string, {
+  label: string;
+  badgeVariant: "pending" | "preparing" | "ready" | "cancelled" | "paid" | "default";
+  icon: typeof Clock;
+}> = {
   pending:   { label: "Pending",   badgeVariant: "pending",   icon: Clock },
   confirmed: { label: "Confirmed", badgeVariant: "preparing", icon: CheckCircle2 },
   preparing: { label: "Preparing", badgeVariant: "preparing", icon: ChefHat },
@@ -39,22 +43,23 @@ const statusFlow: Record<string, { label: string; next: string }> = {
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router  = useRouter();
   const { user } = useAuth();
   const { success, error } = useToast();
 
-  const role = user?.role ?? "";
+  const role      = user?.role ?? "";
   const canManage = ["owner", "manager", "cashier"].includes(role);
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [staff, setStaff] = useState<User[]>([]);
-  const [bill, setBill] = useState<Bill | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [voidLoading, setVoidLoading] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [printBillData, setPrintBillData] = useState<Bill | null>(null);
-  const [showWaiterDrop, setShowWaiterDrop] = useState(false);
+  const [order,        setOrder]        = useState<Order | null>(null);
+  const [staff,        setStaff]        = useState<User[]>([]);
+  const [bill,         setBill]         = useState<Bill | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [statusLoading,setStatusLoading]= useState(false);
+  const [voidLoading,  setVoidLoading]  = useState(false);
+  const [showPayment,  setShowPayment]  = useState(false);
+  const [printBillData,setPrintBillData]= useState<Bill | null>(null);
+  const [showWaiterDrop,setShowWaiterDrop]= useState(false);
+  const loadRef = useRef<() => Promise<void>>();
 
   const load = useCallback(async () => {
     try {
@@ -66,20 +71,31 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       setOrder(o);
       setStaff(staffList.filter((u) => u.isActive));
 
-      // Billing is restricted to cashier+ — silently skip for waiters/kitchen
       if (canManage) {
         try {
           const allBills = await api.billing.list();
           setBill(allBills.find((b) => b.orderId === o.id) ?? null);
-        } catch {
-          setBill(null);
-        }
+        } catch { setBill(null); }
       }
     } catch { error("Failed to load order"); }
     finally { setLoading(false); }
   }, [id, error, canManage]);
 
-  useEffect(() => { load(); }, [load]);
+  loadRef.current = load;
+
+  useEffect(() => {
+    load();
+
+    /* Real-time sync: when kitchen updates KOT status, this page refreshes */
+    const closeSSE = createSseConnection((data) => {
+      const msg = data as { type: string; orderId?: number };
+      if (["order_updated", "kot_status", "order_created"].includes(msg.type)) {
+        loadRef.current?.();
+      }
+    });
+
+    return () => closeSSE();
+  }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const advanceStatus = async () => {
     if (!order) return;
@@ -122,45 +138,56 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   if (loading) return <AppLayout><PageLoader text="Loading order…" /></AppLayout>;
-  if (!order)  return <AppLayout><div className="p-8 text-slate-400 text-sm">Order not found</div></AppLayout>;
+  if (!order)  return <AppLayout><div className="p-8 text-sm" style={{ color: "var(--text-faint)" }}>Order not found</div></AppLayout>;
 
-  const cfg = statusConfig[order.status] ?? statusConfig.pending;
+  const cfg      = statusConfig[order.status] ?? statusConfig.pending;
   const StatusIcon = cfg.icon;
   const nextStep = statusFlow[order.status];
-  const canVoid = !["cancelled", "billed"].includes(order.status);
+  const canVoid     = !["cancelled", "billed"].includes(order.status);
   const canBillOrPay = !["cancelled"].includes(order.status);
   const subtotal = parseFloat(order.subtotal);
   const gst      = parseFloat(order.gstAmount);
   const total    = parseFloat(order.total);
-
   const assignedWaiterName = (order as Order & { user?: { name: string } }).user?.name;
 
   return (
     <AppLayout>
-      <div className="h-full overflow-y-auto bg-slate-50">
-        {/* Top bar */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
+      <div className="h-full overflow-y-auto" style={{ background: "var(--page-bg)" }}>
+
+        {/* ── Top bar ── */}
+        <div className="border-b px-4 py-3 flex items-center gap-3 sticky top-0"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--bdr)",
+            zIndex: 10,
+          }}>
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 rounded transition-colors"
+            style={{ color: "var(--text-muted)" }}
           >
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg font-black text-slate-900">Order #{order.id}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-black leading-tight" style={{ color: "var(--text-primary)" }}>
+                Order #{order.id}
+              </h1>
               <Badge variant={cfg.badgeVariant} dot>
                 <StatusIcon className="w-3 h-3 mr-0.5" />
                 {cfg.label}
               </Badge>
               {order.table && (
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                <span className="text-xs px-2 py-0.5 rounded font-medium"
+                  style={{ background: "var(--surface-3)", color: "var(--text-muted)", borderRadius: "var(--r-sm)" }}>
                   🪑 {order.table.name}
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {new Date(order.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
+              {new Date(order.createdAt).toLocaleString("en-IN", {
+                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -172,7 +199,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             {canBillOrPay && canManage && (
               <Button variant="primary" size="sm" onClick={() => setShowPayment(true)} className="gap-2">
                 <CreditCard className="w-3.5 h-3.5" />
-                {bill?.paymentStatus === "paid" ? "Paid ✓" : bill ? "Collect Payment" : "Checkout"}
+                {bill?.paymentStatus === "paid" ? "Paid ✓" : bill ? "Collect" : "Checkout"}
               </Button>
             )}
             {canVoid && canManage && (
@@ -183,50 +210,75 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* ── Content ── */}
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Items card */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">{order.items?.length ?? 0} Items</h2>
-              <span className="text-xs text-slate-400 capitalize">{order.orderType.replace("_", " ")}</span>
+          {/* Items card — takes 2 cols on large */}
+          <div className="lg:col-span-2 rounded-lg overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--bdr)" }}>
+            <div className="px-4 py-3 border-b flex items-center justify-between"
+              style={{ borderColor: "var(--bdr)" }}>
+              <h2 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+                {order.items?.length ?? 0} Items
+              </h2>
+              <span className="text-xs capitalize" style={{ color: "var(--text-faint)" }}>
+                {order.orderType.replace("_", " ")}
+              </span>
             </div>
             <div>
               {order.items?.map((item, i) => (
                 <div
                   key={item.id}
-                  className={cn("px-5 py-4 flex items-start gap-3", i < (order.items?.length ?? 0) - 1 && "border-b border-slate-50")}
+                  className={cn(
+                    "px-4 py-3 flex items-start gap-3",
+                    i < (order.items?.length ?? 0) - 1 && "border-b",
+                  )}
+                  style={{ borderColor: "var(--bdr-light)" }}
                 >
-                  <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-slate-500">{item.quantity}</span>
+                  <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: "var(--brand-light)", borderRadius: "var(--r-sm)" }}>
+                    <span className="text-xs font-bold" style={{ color: "var(--brand)" }}>
+                      {item.quantity}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm leading-tight">{item.name}</p>
-                    {item.notes && <p className="text-xs text-slate-400 italic mt-0.5">"{item.notes}"</p>}
-                    <p className="text-xs text-slate-400 mt-0.5">{formatCurrency(parseFloat(item.price))} each</p>
+                    <p className="font-semibold text-sm leading-tight" style={{ color: "var(--text-primary)" }}>
+                      {item.name}
+                    </p>
+                    {item.notes && (
+                      <p className="text-xs italic mt-0.5" style={{ color: "var(--text-faint)" }}>"{item.notes}"</p>
+                    )}
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
+                      {formatCurrency(parseFloat(item.price))} each
+                    </p>
                   </div>
-                  <span className="font-bold text-slate-900 text-sm tabular-nums shrink-0">
+                  <span className="font-bold text-sm tabular-nums shrink-0" style={{ color: "var(--text-primary)" }}>
                     {formatCurrency(parseFloat(item.price) * item.quantity)}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-orange-50/30 border-t border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm text-slate-500">
+
+            {/* Bill summary */}
+            <div className="px-4 py-4 border-t space-y-2"
+              style={{ borderColor: "var(--bdr)", background: "var(--surface-2)" }}>
+              <div className="flex justify-between text-sm" style={{ color: "var(--text-muted)" }}>
                 <span>Subtotal</span><span className="tabular-nums">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm text-slate-500">
+              <div className="flex justify-between text-sm" style={{ color: "var(--text-muted)" }}>
                 <span>GST</span><span className="tabular-nums">{formatCurrency(gst)}</span>
               </div>
               {bill && parseFloat(bill.discount) > 0 && (
-                <div className="flex justify-between text-sm text-emerald-600 font-medium">
-                  <span>Discount</span><span className="tabular-nums">−{formatCurrency(parseFloat(bill.discount))}</span>
+                <div className="flex justify-between text-sm font-medium"
+                  style={{ color: "var(--success)" }}>
+                  <span>Discount</span>
+                  <span className="tabular-nums">−{formatCurrency(parseFloat(bill.discount))}</span>
                 </div>
               )}
-              <div className="flex justify-between font-black text-slate-900 text-xl pt-2 border-t border-slate-200">
-                <span>Total</span>
-                <span className="tabular-nums text-orange-600">
+              <div className="flex justify-between items-center pt-2 border-t"
+                style={{ borderColor: "var(--bdr)" }}>
+                <span className="font-black text-base" style={{ color: "var(--text-primary)" }}>Total</span>
+                <span className="text-xl font-black tabular-nums" style={{ color: "var(--brand)" }}>
                   {bill ? formatCurrency(parseFloat(bill.total)) : formatCurrency(total)}
                 </span>
               </div>
@@ -234,17 +286,23 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Right column */}
-          <div className="space-y-4">
+          <div className="space-y-3">
 
-            {/* Status action — cashier+ only */}
+            {/* Next step action */}
             {nextStep && !["cancelled", "billed"].includes(order.status) && canManage && (
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg shadow-orange-200">
-                <p className="text-xs font-bold opacity-75 mb-1">NEXT STEP</p>
-                <p className="text-sm font-semibold mb-3 opacity-90">Move order to next stage</p>
+              <div className="rounded-lg p-4 text-white"
+                style={{
+                  background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)",
+                  boxShadow: "var(--shadow-brand)",
+                  borderRadius: "var(--r-lg)",
+                }}>
+                <p className="text-[10px] font-bold mb-0.5 opacity-70 uppercase tracking-wider">Next Step</p>
+                <p className="text-sm font-semibold mb-3 opacity-90">Move to next stage</p>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="w-full bg-white text-orange-600 hover:bg-orange-50 font-bold"
+                  className="w-full font-bold"
+                  style={{ background: "#fff", color: "var(--brand)" }}
                   onClick={advanceStatus}
                   loading={statusLoading}
                 >
@@ -253,81 +311,111 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Read-only status note for waiters/kitchen */}
+            {/* Read-only status (waiter/kitchen) */}
             {!canManage && !["cancelled", "billed"].includes(order.status) && (
-              <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</p>
+              <div className="rounded-lg p-4"
+                style={{ background: "var(--surface)", border: "1px solid var(--bdr)", borderRadius: "var(--r-lg)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2"
+                  style={{ color: "var(--text-faint)" }}>
+                  Status
+                </p>
                 <Badge variant={cfg.badgeVariant} dot>{cfg.label}</Badge>
-                <p className="text-xs text-slate-400 mt-2">Status is managed by cashier or manager.</p>
+                <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
+                  Status is managed by cashier or manager.
+                </p>
               </div>
             )}
 
-            {/* Payment — cashier+ only */}
+            {/* Payment */}
             {canManage && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Payment</p>
+              <div className="rounded-lg p-4"
+                style={{ background: "var(--surface)", border: "1px solid var(--bdr)", borderRadius: "var(--r-lg)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--text-faint)" }}>
+                  Payment
+                </p>
                 {bill?.paymentStatus === "paid" ? (
-                  <div className="flex items-center gap-2 text-emerald-600">
+                  <div className="flex items-center gap-2" style={{ color: "var(--success)" }}>
                     <CheckCircle2 className="w-5 h-5" />
                     <div>
                       <p className="font-bold text-sm">Paid</p>
-                      <p className="text-xs capitalize text-emerald-500">{bill.paymentMethod?.replace("_", " ")}</p>
+                      <p className="text-xs capitalize" style={{ color: "var(--success)" }}>
+                        {bill.paymentMethod?.replace("_", " ")}
+                      </p>
                     </div>
                   </div>
                 ) : bill ? (
                   <div>
-                    <p className="text-xs text-slate-500 mb-2">{bill.billNumber} · Unpaid</p>
+                    <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                      {bill.billNumber} · Unpaid
+                    </p>
                     <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
                       <CreditCard className="w-3.5 h-3.5" /> Collect Payment
                     </Button>
                   </div>
                 ) : canBillOrPay ? (
                   <div>
-                    <p className="text-xs text-slate-400 mb-3">No bill generated yet</p>
+                    <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                      No bill generated yet
+                    </p>
                     <Button variant="primary" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
-                      <CreditCard className="w-3.5 h-3.5" /> Generate & Pay
+                      <CreditCard className="w-3.5 h-3.5" /> Generate &amp; Pay
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400">Order voided</p>
+                  <p className="text-xs" style={{ color: "var(--text-faint)" }}>Order voided</p>
                 )}
               </div>
             )}
 
             {/* Waiter assignment */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Assigned Waiter</p>
+            <div className="rounded-lg p-4"
+              style={{ background: "var(--surface)", border: "1px solid var(--bdr)", borderRadius: "var(--r-lg)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-3"
+                style={{ color: "var(--text-faint)" }}>
+                Assigned Waiter
+              </p>
               {canManage ? (
                 <div className="relative">
                   <button
                     onClick={() => setShowWaiterDrop((v) => !v)}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded border transition-colors text-left"
+                    style={{ border: "1px solid var(--bdr)", borderRadius: "var(--r-md)" }}
                   >
-                    <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                      <UserCircle className="w-4 h-4 text-orange-600" />
+                    <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+                      style={{ background: "var(--brand-light)", borderRadius: "var(--r-sm)" }}>
+                      <UserCircle className="w-4 h-4" style={{ color: "var(--brand)" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                         {assignedWaiterName ?? "Unassigned"}
                       </p>
-                      <p className="text-xs text-slate-400">Tap to reassign</p>
+                      <p className="text-xs" style={{ color: "var(--text-faint)" }}>Tap to reassign</p>
                     </div>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform", showWaiterDrop && "rotate-180")} />
+                    <ChevronDown className={cn(
+                      "w-4 h-4 shrink-0 transition-transform",
+                      showWaiterDrop && "rotate-180",
+                    )} style={{ color: "var(--text-faint)" }} />
                   </button>
                   {showWaiterDrop && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded border shadow-lg z-20 overflow-hidden max-h-48 overflow-y-auto"
+                      style={{ background: "var(--surface)", borderColor: "var(--bdr)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-xl)" }}>
                       {staff.map((u) => (
                         <button
                           key={u.id}
                           onClick={() => assignWaiter(u.id)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-orange-50 transition-colors text-left border-b border-slate-50 last:border-0"
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 border-b last:border-0 text-left transition-colors hover:bg-blue-50"
+                          style={{ borderColor: "var(--bdr-light)" }}
                         >
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
+                          <div className="w-7 h-7 rounded flex items-center justify-center text-xs font-bold shrink-0"
+                            style={{ background: "var(--surface-3)", color: "var(--text-muted)", borderRadius: "var(--r-sm)" }}>
                             {u.name[0].toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-900 leading-tight">{u.name}</p>
-                            <p className="text-xs text-slate-400 capitalize">{u.role}</p>
+                            <p className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                              {u.name}
+                            </p>
+                            <p className="text-xs capitalize" style={{ color: "var(--text-faint)" }}>{u.role}</p>
                           </div>
                         </button>
                       ))}
@@ -335,11 +423,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                    <UserCircle className="w-4 h-4 text-orange-600" />
+                <div className="flex items-center gap-2.5 p-2.5 rounded border"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--bdr)", borderRadius: "var(--r-md)" }}>
+                  <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+                    style={{ background: "var(--brand-light)", borderRadius: "var(--r-sm)" }}>
+                    <UserCircle className="w-4 h-4" style={{ color: "var(--brand)" }} />
                   </div>
-                  <p className="text-sm font-semibold text-slate-900 truncate">
+                  <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                     {assignedWaiterName ?? "Unassigned"}
                   </p>
                 </div>
@@ -347,17 +437,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* Order meta */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs space-y-2.5">
+            <div className="rounded-lg p-4 text-xs space-y-2.5"
+              style={{ background: "var(--surface)", border: "1px solid var(--bdr)", borderRadius: "var(--r-lg)" }}>
               {[
                 { label: "Order ID", value: `#${order.id}` },
-                { label: "Type", value: order.orderType.replace("_", " ") },
-                { label: "Table", value: order.table?.name ?? "—" },
-                { label: "Items", value: order.items?.length ?? 0 },
-                { label: "Created", value: new Date(order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) },
+                { label: "Type",     value: order.orderType.replace("_", " ") },
+                { label: "Table",    value: order.table?.name ?? "—" },
+                { label: "Items",    value: order.items?.length ?? 0 },
+                { label: "Created",  value: new Date(order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">{label}</span>
-                  <span className="text-slate-800 font-semibold capitalize">{value}</span>
+                  <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>{label}</span>
+                  <span className="font-semibold capitalize" style={{ color: "var(--text-secondary)" }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -374,7 +465,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           order={!bill ? order : undefined}
         />
       )}
-
       {printBillData && (
         <PrintBill
           bill={printBillData}

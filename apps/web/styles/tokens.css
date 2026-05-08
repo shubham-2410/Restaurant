@@ -1,90 +1,115 @@
+/* ══════════════════════════════════════════════════════════════
+   DESIGN TOKENS  —  RestaurantOS
+   Philosophy: neutral surfaces, single controlled accent,
+   semantic colour hierarchy, enterprise-grade clarity.
+   ══════════════════════════════════════════════════════════════ */
+
 :root {
-  /* ── Brand ── */
-  --brand:           #f97316;
-  --brand-hover:     #ea6700;
-  --brand-light:     #fff7ed;
-  --brand-mid:       #fed7aa;
-  --brand-glow:      rgba(249,115,22,.20);
-  --brand-grad:      linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  /* ─── Brand: professional blue ─── */
+  --brand:        #2563EB;
+  --brand-hover:  #1D4ED8;
+  --brand-active: #1E40AF;
+  --brand-light:  #EFF6FF;
+  --brand-mid:    #BFDBFE;
+  --brand-glow:   rgba(37,99,235,.12);
 
-  /* ── Sidebar (dark charcoal) ── */
-  --sb-bg:           #111827;
-  --sb-surface:      #1f2937;
-  --sb-border:       rgba(255,255,255,.07);
-  --sb-text:         #9ca3af;
-  --sb-text-active:  #ffffff;
-  --sb-hover:        rgba(255,255,255,.06);
-  --sb-active-bg:    rgba(249,115,22,.15);
-  --sb-active-bdr:   #f97316;
-  --sb-width:        240px;
-  --sb-width-mini:   64px;
+  /* ─── Sidebar (near-black, neutral) ─── */
+  --sb-bg:          #111827;
+  --sb-surface:     #1F2937;
+  --sb-border:      rgba(255,255,255,.07);
+  --sb-text:        #9CA3AF;
+  --sb-text-active: #F9FAFB;
+  --sb-hover:       rgba(255,255,255,.06);
+  --sb-active-bg:   rgba(37,99,235,.15);
+  --sb-active-bdr:  #2563EB;
+  --sb-width:       220px;
+  --sb-width-mini:  56px;
 
-  /* ── Page surface ── */
-  --page-bg:         #f3f4f6;
-  --surface:         #ffffff;
-  --surface-2:       #f9fafb;
-  --surface-raised:  #ffffff;
+  /* ─── Neutral surfaces ─── */
+  --page-bg:   #F4F6F9;
+  --surface:   #FFFFFF;
+  --surface-2: #F9FAFB;
+  --surface-3: #F3F4F6;
 
-  /* ── Borders ── */
-  --bdr:             #e5e7eb;
-  --bdr-light:       #f3f4f6;
-  --bdr-strong:      #d1d5db;
+  /* ─── Borders ─── */
+  --bdr:        #E5E7EB;
+  --bdr-light:  #F3F4F6;
+  --bdr-strong: #D1D5DB;
 
-  /* ── Typography ── */
-  --text-primary:    #111827;
-  --text-secondary:  #374151;
-  --text-muted:      #6b7280;
-  --text-faint:      #9ca3af;
+  /* ─── Typography ─── */
+  --text-primary:   #111827;
+  --text-secondary: #374151;
+  --text-muted:     #6B7280;
+  --text-faint:     #9CA3AF;
+  --text-disabled:  #D1D5DB;
 
-  /* ── Shadows ── */
-  --shadow-xs:       0 1px 2px rgba(0,0,0,.05);
-  --shadow-sm:       0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:       0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg:       0 10px 30px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.05);
-  --shadow-xl:       0 20px 50px rgba(0,0,0,.12), 0 8px 20px rgba(0,0,0,.06);
-  --shadow-brand:    0 4px 16px rgba(249,115,22,.28);
+  /* ─── Semantic status ─── */
+  --success:       #059669;
+  --success-light: #ECFDF5;
+  --warning:       #D97706;
+  --warning-light: #FFFBEB;
+  --danger:        #DC2626;
+  --danger-light:  #FEF2F2;
 
-  /* ── Radius ── */
-  --r-sm:   6px;
-  --r-md:   10px;
-  --r-lg:   14px;
-  --r-xl:   18px;
-  --r-2xl:  24px;
-  --r-full: 9999px;
+  /* ─── Status badge tokens ─── */
+  --status-pending-bg:   #FFFBEB;
+  --status-pending-bdr:  #FCD34D;
+  --status-pending-text: #92400E;
+  --status-pending-dot:  #F59E0B;
 
-  /* ── Transition ── */
-  --ease:  cubic-bezier(0.4,0,0.2,1);
-  --fast:  140ms;
-  --normal: 200ms;
-  --slow:  320ms;
+  --status-prep-bg:      #EFF6FF;
+  --status-prep-bdr:     #93C5FD;
+  --status-prep-text:    #1D4ED8;
+  --status-prep-dot:     #3B82F6;
 
-  /* ── Status palette ── */
-  --status-pending-bg:   #fffbeb;
-  --status-pending-bdr:  #fcd34d;
-  --status-pending-text: #92400e;
-  --status-pending-dot:  #f59e0b;
-
-  --status-prep-bg:      #eff6ff;
-  --status-prep-bdr:     #93c5fd;
-  --status-prep-text:    #1d4ed8;
-  --status-prep-dot:     #3b82f6;
-
-  --status-ready-bg:     #f0fdf4;
-  --status-ready-bdr:    #86efac;
+  --status-ready-bg:     #F0FDF4;
+  --status-ready-bdr:    #86EFAC;
   --status-ready-text:   #166534;
-  --status-ready-dot:    #22c55e;
+  --status-ready-dot:    #22C55E;
 
-  --status-billed-bg:    #ecfdf5;
-  --status-billed-bdr:   #6ee7b7;
-  --status-billed-text:  #065f46;
-  --status-billed-dot:   #10b981;
+  --status-billed-bg:    #ECFDF5;
+  --status-billed-bdr:   #6EE7B7;
+  --status-billed-text:  #065F46;
+  --status-billed-dot:   #10B981;
 
-  --status-cancel-bg:    #f9fafb;
-  --status-cancel-bdr:   #e5e7eb;
-  --status-cancel-text:  #6b7280;
-  --status-cancel-dot:   #9ca3af;
+  --status-cancel-bg:    #F9FAFB;
+  --status-cancel-bdr:   #E5E7EB;
+  --status-cancel-text:  #6B7280;
+  --status-cancel-dot:   #9CA3AF;
+
+  /* ─── Shadows (precise, non-diffuse) ─── */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,.09), 0 10px 10px -5px rgba(0,0,0,.04);
+  --shadow-brand: 0 4px 12px rgba(37,99,235,.2);
+
+  /* ─── Border radius (conservative enterprise scale) ─── */
+  --r-xs:   2px;
+  --r-sm:   4px;   /* inline tags, chips */
+  --r-md:   6px;   /* buttons, inputs, dropdowns */
+  --r-lg:   8px;   /* cards, panels */
+  --r-xl:   10px;  /* modals, large cards */
+  --r-2xl:  14px;  /* bottom sheets */
+  --r-full: 9999px;/* pill badges only */
+
+  /* ─── Spacing (4px base) ─── */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* ─── Transitions (reduced, purposeful) ─── */
+  --fast:     100ms;
+  --normal:   180ms;
+  --slow:     260ms;
+  --ease:     cubic-bezier(0.4,0,0.2,1);
+  --ease-out: cubic-bezier(0,0,0.2,1);
+
+  /* ─── Layout dims ─── */
+  --topbar-h:     52px;
+  --bottom-nav-h: 52px;
 }
 
-/* ── Utility shorthands used in CSS ── */
+/* Utility shorthands */
 .text-brand  { color: var(--brand); }
-.bg-brand    { background: var(--brand); }
+.text-muted  { color: var(--text-muted); }

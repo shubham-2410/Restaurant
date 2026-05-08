@@ -155,7 +155,7 @@ export function StaffModal({ open, onClose, onSaved, user }: StaffModalProps) {
               id="staffActive"
               checked={form.isActive}
               onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-              className="w-4 h-4 accent-orange-500"
+              className="w-4 h-4 accent-blue-600"
             />
             <label htmlFor="staffActive" className="text-sm font-medium text-slate-700">
               Active (can login)

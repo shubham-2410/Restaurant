@@ -1,115 +1,253 @@
 /* ══════════════════════════════════════════
    MOBILE BOTTOM NAV
-   – shown only on mobile (≤768px),
-   – provides thumb-friendly primary navigation
    ══════════════════════════════════════════ */
 
 .mobile-nav {
   display: none;
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   z-index: 100;
   background: var(--surface);
   border-top: 1px solid var(--bdr);
-  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
-  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+  padding: 2px 0 max(2px, env(safe-area-inset-bottom));
+  box-shadow: 0 -1px 0 var(--bdr), var(--shadow-lg);
 }
 
 @media (max-width: 768px) {
   .mobile-nav { display: flex; }
-  /* Push app content above bottom nav */
-  .app-content { padding-bottom: 62px; }
+  .app-content { padding-bottom: var(--bottom-nav-h); }
 }
 
 .mobile-nav__items {
-  display: flex;
-  flex: 1;
-  justify-content: space-around;
-  align-items: center;
+  display: flex; flex: 1;
+  justify-content: space-around; align-items: stretch;
 }
 
 .mobile-nav__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 6px 12px;
-  border-radius: var(--r-lg);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: pointer;
-  background: none;
-  border: none;
-  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
-  min-width: 52px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px; padding: 5px 6px;
+  border-radius: var(--r-md);
+  font-size: 0.5rem; font-weight: 700;
+  color: var(--text-faint);
+  text-decoration: none; cursor: pointer;
+  background: none; border: none;
+  transition: color var(--fast) var(--ease);
+  min-width: 44px; flex: 1;
   position: relative;
+  /* 44px minimum touch target per HIG */
+  min-height: 44px;
 }
-.mobile-nav__item:hover { color: var(--brand); }
+.mobile-nav__item:hover   { color: var(--brand); }
 .mobile-nav__item--active { color: var(--brand); }
 
-.mobile-nav__icon {
-  width: 22px;
-  height: 22px;
-  position: relative;
-}
-
-/* Active dot indicator */
-.mobile-nav__item--active .mobile-nav__icon::after {
+/* Active indicator: top bar */
+.mobile-nav__item--active::before {
   content: "";
   position: absolute;
-  bottom: -4px;
-  left: 50%;
+  top: 0; left: 50%;
   transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+  width: 24px; height: 2px;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
   background: var(--brand);
 }
 
-.mobile-nav__label { line-height: 1; }
+.mobile-nav__icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.mobile-nav__label { line-height: 1; letter-spacing: 0.01em; }
 
-/* ── Mobile page header adjustments ── */
+/* ── Mobile page adjustments ── */
 @media (max-width: 768px) {
-  .page-header { margin-bottom: 16px; }
-  .page-title  { font-size: 1.125rem; }
-  .page-section { padding: 14px 16px; }
-
-  /* Make grids 1-col on small screens */
+  .page-header { margin-bottom: 12px; }
+  .page-title  { font-size: 1rem; }
+  .page-section { padding: 12px 14px; }
   .stats-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
   .stats-grid-5 > :last-child { grid-column: 1 / -1; }
 }
 
-/* ── Responsive grid helpers ── */
+/* ── Grid helpers ── */
 .responsive-grid-orders {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  display: grid; grid-template-columns: 1fr; gap: 8px;
 }
-@media (min-width: 560px)  { .responsive-grid-orders { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 480px)  { .responsive-grid-orders { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 900px)  { .responsive-grid-orders { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1200px) { .responsive-grid-orders { grid-template-columns: repeat(4, 1fr); } }
 
-.responsive-grid-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
+.responsive-grid-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 @media (min-width: 640px)  { .responsive-grid-stats { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1024px) { .responsive-grid-stats { grid-template-columns: repeat(5, 1fr); } }
 
 /* ── KDS responsive ── */
 @media (max-width: 640px) {
-  .kds-grid {
+  .kds-grid { display: flex; flex-direction: column; }
+  .kds-col  { border-right: none; border-bottom: 1px solid var(--bdr); max-height: 40vh; }
+}
+
+/* ══════════════════════════════════════════
+   POS PAGE — MOBILE LAYOUT
+   Full-screen menu + bottom-sheet cart
+   ══════════════════════════════════════════ */
+
+/* Cart sticky CTA bar — shown when cart has items on mobile */
+.pos-sticky-cta {
+  display: none;
+}
+
+@media (max-width: 768px) {
+
+  /* Menu panel: full width */
+  .pos-menu-panel { width: 100% !important; flex: 1; }
+
+  /* Desktop cart panel: hidden */
+  .pos-cart-panel { display: none !important; }
+
+  /* Sticky cart button */
+  .pos-sticky-cta {
+    display: flex;
+    position: fixed;
+    bottom: calc(var(--bottom-nav-h) + 10px);
+    left: 12px; right: 12px;
+    z-index: 120;
+    height: 50px;
+    border-radius: var(--r-md);
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    box-shadow: var(--shadow-brand), 0 4px 16px rgba(37,99,235,.25);
+    transition: background var(--fast) var(--ease);
+    font-weight: 700;
+    font-size: 0.9375rem;
+    /* Elevate above content */
+    will-change: transform;
+  }
+  .pos-sticky-cta:active { background: var(--brand-active); }
+
+  .pos-sticky-cta__left  { display: flex; align-items: center; gap: 10px; }
+  .pos-sticky-cta__badge {
+    background: rgba(255,255,255,.25);
+    border-radius: var(--r-sm);
+    padding: 2px 7px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    min-width: 22px;
+    text-align: center;
+  }
+  .pos-sticky-cta__label { font-weight: 600; font-size: 0.875rem; }
+  .pos-sticky-cta__total { font-size: 0.9375rem; font-weight: 800; }
+
+  /* Bottom sheet */
+  .pos-cart-sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 160;
+    background: var(--surface);
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.12);
+    /* Allow sheet to grow but not overflow screen */
+    max-height: calc(90vh - env(safe-area-inset-top));
     display: flex;
     flex-direction: column;
+    animation: slideUp 220ms var(--ease-out) both;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    /* GPU compositing */
+    will-change: transform;
   }
-  .kds-col {
-    border-right: none;
-    border-bottom: 1px solid var(--bdr);
-    max-height: 40vh;
+
+  .pos-cart-sheet__handle {
+    width: 32px; height: 4px;
+    border-radius: 99px;
+    background: var(--bdr-strong);
+    margin: 10px auto 6px;
+    flex-shrink: 0;
   }
+
+  /* Backdrop */
+  .pos-cart-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 155;
+    animation: fadeIn 160ms var(--ease) both;
+  }
+}
+
+/* ── POS menu item grid ── */
+.pos-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-content: start;
+}
+@media (min-width: 420px)  { .pos-items-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px)  { .pos-items-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1200px) { .pos-items-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* ── Quantity stepper ── */
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--bdr);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.qty-stepper__btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none; cursor: pointer;
+  color: var(--text-muted);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  flex-shrink: 0;
+  /* Minimum touch target */
+  min-width: 36px;
+}
+.qty-stepper__btn:hover         { background: var(--surface-3); color: var(--text-primary); }
+.qty-stepper__btn--inc:hover    { background: var(--brand-light); color: var(--brand); }
+.qty-stepper__btn--dec:hover    { background: #FEF2F2; color: #DC2626; }
+.qty-stepper__btn:active        { opacity: .7; }
+
+.qty-stepper__val {
+  min-width: 32px; text-align: center;
+  font-size: 0.875rem; font-weight: 700;
+  color: var(--text-primary);
+  border-left: 1px solid var(--bdr);
+  border-right: 1px solid var(--bdr);
+  line-height: 36px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+/* Mobile: bigger touch targets */
+@media (max-width: 768px) {
+  .qty-stepper__btn { width: 40px; height: 40px; min-width: 40px; }
+  .qty-stepper__val { line-height: 40px; }
+}
+
+/*
+ * Modal portal is now rendered at document.body with z-index: 9999
+ * via createPortal — no CSS overrides needed. The legacy .modal-overlay
+ * selectors below are kept for any other modals that might use them.
+ */
+@media (max-width: 640px) {
+  .modal-overlay  { align-items: flex-end !important; }
+  .modal {
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  .modal__body   { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal__footer { position: sticky; bottom: 0; background: var(--surface); padding-top: 12px; border-top: 1px solid var(--bdr); }
+}
+
+/* ── Data table: mobile density ── */
+@media (max-width: 640px) {
+  .data-table th, .data-table td { padding: 7px 9px; font-size: 0.75rem; }
+  .data-table .hide-mobile        { display: none; }
 }

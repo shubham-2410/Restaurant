@@ -1,75 +1,136 @@
 "use client";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ModalProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
+  open:     boolean;
+  onClose:  () => void;
+  title:    string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
-  footer?: ReactNode;
+  size?:    "sm" | "md" | "lg" | "xl";
+  footer?:  ReactNode;
 }
 
-const sizeMap = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg", xl: "max-w-2xl" };
+const sizeClass = {
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-2xl",
+};
 
 export function Modal({ open, onClose, title, children, size = "md", footer }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
+  const closeRef = useRef<() => void>(onClose);
+  closeRef.current = onClose;
+
+  /* Mount check — portals need the DOM */
+  useEffect(() => { setMounted(true); }, []);
+
+  /* Keyboard + scroll-lock */
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    if (open) {
-      document.addEventListener("keydown", handler);
-      document.body.style.overflow = "hidden";
-    }
-    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
-  }, [open, onClose]);
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRef.current();
+    };
+    /* Prevent body scroll while modal is open */
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handler);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", handler);
+    };
+  }, [open]);
 
-  if (!open) return null;
+  if (!mounted || !open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      {/* Backdrop */}
+  const panel = (
+    /*
+     * z-[9999]: beats mobile-nav(100), cart-sheet(160), sidebar(200).
+     * Rendered via portal directly into document.body so it escapes ALL
+     * parent stacking contexts (overflow:hidden, transform, will-change, etc.)
+     */
+    <div
+      className="fixed inset-0 flex items-end sm:items-center justify-center"
+      style={{ zIndex: 9999 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      {/* ── Backdrop ── */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        style={{ animation: "fadeIn 180ms ease both" }}
+        className="absolute inset-0"
+        style={{
+          background: "rgba(0,0,0,.55)",
+          backdropFilter: "blur(2px)",
+          WebkitBackdropFilter: "blur(2px)",
+          animation: "fadeIn 160ms ease both",
+        }}
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Panel — slides up on mobile, scales in on desktop */}
-      <div className={cn(
-        "relative w-full bg-white flex flex-col max-h-[92dvh]",
-        "rounded-t-3xl sm:rounded-2xl",
-        "shadow-2xl",
-        "sm:" + sizeMap[size],
-      )}
-        style={{ animation: "fadeUp 220ms cubic-bezier(0.4,0,0.2,1) both" }}
+      {/* ── Panel ── */}
+      <div
+        className={cn(
+          "relative w-full flex flex-col",
+          /* Mobile: sheet from bottom */
+          "rounded-t-2xl max-h-[92dvh]",
+          /* Desktop: centered card */
+          "sm:rounded-xl sm:my-4 sm:mx-4",
+          sizeClass[size],
+        )}
+        style={{
+          background: "var(--surface)",
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.06)",
+          animation: "modalIn 220ms cubic-bezier(0.34,1.26,0.64,1) both",
+        }}
       >
         {/* Mobile drag handle */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        <div className="flex justify-center pt-2.5 pb-0 sm:hidden" aria-hidden="true">
+          <div className="w-8 h-1 rounded-full" style={{ background: "var(--bdr-strong)" }} />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-700 text-gray-900 font-semibold">{title}</h2>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0"
+          style={{ borderColor: "var(--bdr)" }}>
+          <h2 className="text-base font-bold" style={{ color: "var(--text-primary)", letterSpacing: "-0.015em" }}>
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: "var(--text-faint)" }}
+            aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        {/* Body — scrollable */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 min-h-0"
+          style={{ WebkitOverflowScrolling: "touch" }}>
+          {children}
+        </div>
 
-        {/* Footer */}
+        {/* Footer — sticky at bottom */}
         {footer && (
-          <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-2xl">
+          <div
+            className="px-5 py-4 border-t flex-shrink-0"
+            style={{
+              borderColor: "var(--bdr)",
+              background: "var(--surface-2)",
+              borderRadius: "0 0 calc(var(--r-xl) - 1px) calc(var(--r-xl) - 1px)",
+            }}
+          >
             {footer}
           </div>
         )}
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }

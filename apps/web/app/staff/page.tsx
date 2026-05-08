@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const roleMeta: Record<string, { label: string; variant: "purple" | "info" | "success" | "warning" | "default"; color: string }> = {
   owner:   { label: "Owner",   variant: "purple",  color: "from-purple-400 to-purple-600" },
-  manager: { label: "Manager", variant: "info",    color: "from-blue-400 to-blue-600" },
+  manager: { label: "Manager", variant: "info",    color: "from-blue-500 to-blue-700" },
   cashier: { label: "Cashier", variant: "success", color: "from-emerald-400 to-emerald-600" },
   waiter:  { label: "Waiter",  variant: "warning", color: "from-amber-400 to-amber-600" },
   kitchen: { label: "Kitchen", variant: "default", color: "from-slate-400 to-slate-600" },
@@ -23,11 +23,11 @@ const roleMeta: Record<string, { label: string; variant: "purple" | "info" | "su
 export default function StaffPage() {
   const { success, error } = useToast();
   const { user } = useAuth();
-  const [staff, setStaff] = useState<User[]>([]);
+  const [staff,     setStaff]     = useState<User[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editUser,  setEditUser]  = useState<User | null>(null);
 
-  const role = user?.role ?? "";
+  const role      = user?.role ?? "";
   const canManage = ["owner", "manager"].includes(role);
 
   const load = useCallback(() => {
@@ -51,16 +51,18 @@ export default function StaffPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 h-full flex flex-col">
+      <div className="p-5 h-full flex flex-col">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
-              <h1 className="text-xl font-bold text-slate-900">Staff</h1>
-            </div>
-            <p className="text-sm text-slate-500 pl-3.5">
-              {staff.length} members · <span className="text-emerald-600 font-medium">{active} active</span>
+            <h1 className="page-title mb-1">
+              <span className="page-title-bar" />
+              Staff
+            </h1>
+            <p className="page-subtitle" style={{ paddingLeft: 13 }}>
+              {staff.length} members ·{" "}
+              <span style={{ color: "var(--success)", fontWeight: 600 }}>{active} active</span>
             </p>
           </div>
           {canManage && (
@@ -91,21 +93,31 @@ export default function StaffPage() {
                 <div
                   key={member.id}
                   className={cn(
-                    "bg-white border rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200",
-                    member.isActive ? "border-slate-200" : "border-slate-100 opacity-60",
+                    "rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md",
+                    !member.isActive && "opacity-60",
                   )}
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--bdr)",
+                    borderRadius: "var(--r-lg)",
+                  }}
                 >
-                  <div className={cn("h-1.5 bg-gradient-to-r", meta.color)} />
+                  {/* Role color stripe */}
+                  <div className={cn("h-1 bg-gradient-to-r", meta.color)} />
+
                   <div className="p-5">
                     <div className="flex items-start gap-3 mb-4">
                       <div className={cn(
-                        "w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm",
+                        "w-11 h-11 rounded-lg bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm",
                         meta.color,
-                      )}>
-                        <span className="text-xl font-bold text-white">{member.name[0].toUpperCase()}</span>
+                      )}
+                        style={{ borderRadius: "var(--r-md)" }}>
+                        <span className="text-lg font-bold text-white">{member.name[0].toUpperCase()}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 truncate leading-tight">{member.name}</p>
+                        <p className="font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
+                          {member.name}
+                        </p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant={meta.variant}>
                             <Shield className="w-2.5 h-2.5 mr-0.5" />
@@ -116,21 +128,21 @@ export default function StaffPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-slate-500 mb-4">
+                    <div className="space-y-1.5 text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                       <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                        <Mail className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-faint)" }} />
                         <span className="truncate">{member.email}</span>
                       </div>
                       {member.phone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                          <Phone className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-faint)" }} />
                           <span>{member.phone}</span>
                         </div>
                       )}
                     </div>
 
                     {canManage && (
-                      <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 pt-3 border-t" style={{ borderColor: "var(--bdr-light)" }}>
                         <Button
                           variant="outline"
                           size="sm"

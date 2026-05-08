@@ -14,7 +14,7 @@ const methods: { value: PaymentMethod; label: string; icon: typeof Banknote; col
   { value: "cash",     label: "Cash",     icon: Banknote,   color: "border-emerald-400 bg-emerald-50 text-emerald-700" },
   { value: "card",     label: "Card",     icon: CreditCard, color: "border-blue-400 bg-blue-50 text-blue-700" },
   { value: "upi",      label: "UPI",      icon: Smartphone, color: "border-purple-400 bg-purple-50 text-purple-700" },
-  { value: "razorpay", label: "Razorpay", icon: Building2,  color: "border-orange-400 bg-orange-50 text-orange-700" },
+  { value: "razorpay", label: "Razorpay", icon: Building2,  color: "border-blue-400 bg-blue-50 text-blue-700" },
 ];
 
 interface PaymentModalProps {
@@ -144,24 +144,25 @@ export function PaymentModal({ open, onClose, onPaid, bill, order }: PaymentModa
           </div>
 
           {/* Amount breakdown */}
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 space-y-2.5">
-            <div className="flex justify-between text-sm text-slate-500">
+          <div className="rounded-xl p-4 space-y-2.5"
+            style={{ background: "var(--brand-light)", border: "1px solid var(--brand-mid)" }}>
+            <div className="flex justify-between text-sm" style={{ color: "var(--text-muted)" }}>
               <span>Subtotal</span>
               <span className="tabular-nums font-semibold">{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm text-slate-500">
+            <div className="flex justify-between text-sm" style={{ color: "var(--text-muted)" }}>
               <span>GST</span>
               <span className="tabular-nums font-semibold">{formatCurrency(gst)}</span>
             </div>
             {discountAmt > 0 && (
-              <div className="flex justify-between text-sm text-emerald-600 font-semibold">
+              <div className="flex justify-between text-sm font-semibold" style={{ color: "var(--success)" }}>
                 <span>Discount</span>
                 <span className="tabular-nums">− {formatCurrency(discountAmt)}</span>
               </div>
             )}
-            <div className="flex justify-between items-baseline pt-2 border-t border-orange-200">
-              <span className="font-bold text-slate-700">Total</span>
-              <span className="text-2xl font-black tabular-nums text-orange-600">{formatCurrency(finalTotal)}</span>
+            <div className="flex justify-between items-baseline pt-2 border-t" style={{ borderColor: "var(--brand-mid)" }}>
+              <span className="font-bold" style={{ color: "var(--text-secondary)" }}>Total</span>
+              <span className="text-2xl font-black tabular-nums" style={{ color: "var(--brand)" }}>{formatCurrency(finalTotal)}</span>
             </div>
           </div>
 
