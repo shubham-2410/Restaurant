@@ -1,115 +1,116 @@
 /* ══════════════════════════════════════════════════════════════
-   DESIGN TOKENS  —  RestaurantOS
-   Philosophy: neutral surfaces, single controlled accent,
-   semantic colour hierarchy, enterprise-grade clarity.
+   DESIGN TOKENS  —  RestaurantOS  (Redesign)
+   Philosophy: warm hospitality, dark depth, amber warmth,
+   premium restaurant feel. Charcoal surfaces, amber accent.
    ══════════════════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
 :root {
-  /* ─── Brand: professional blue ─── */
-  --brand:        #2563EB;
-  --brand-hover:  #1D4ED8;
-  --brand-active: #1E40AF;
-  --brand-light:  #EFF6FF;
-  --brand-mid:    #BFDBFE;
-  --brand-glow:   rgba(37,99,235,.12);
+  /* ─── Brand: warm amber ─── */
+  --brand:        #E8914A;
+  --brand-hover:  #D97C36;
+  --brand-active: #C46A22;
+  --brand-light:  #FDF4EC;
+  --brand-mid:    #F9D4AF;
+  --brand-glow:   rgba(232,145,74,.18);
 
-  /* ─── Sidebar (near-black, neutral) ─── */
-  --sb-bg:          #111827;
-  --sb-surface:     #1F2937;
-  --sb-border:      rgba(255,255,255,.07);
-  --sb-text:        #9CA3AF;
-  --sb-text-active: #F9FAFB;
-  --sb-hover:       rgba(255,255,255,.06);
-  --sb-active-bg:   rgba(37,99,235,.15);
-  --sb-active-bdr:  #2563EB;
-  --sb-width:       220px;
-  --sb-width-mini:  56px;
+  /* ─── Sidebar (rich dark espresso) ─── */
+  --sb-bg:          #1A1410;
+  --sb-surface:     #241C16;
+  --sb-border:      rgba(255,255,255,.06);
+  --sb-text:        #A89880;
+  --sb-text-active: #F5EDE4;
+  --sb-hover:       rgba(232,145,74,.08);
+  --sb-active-bg:   rgba(232,145,74,.14);
+  --sb-active-bdr:  #E8914A;
+  --sb-width:       228px;
+  --sb-width-mini:  58px;
 
-  /* ─── Neutral surfaces ─── */
-  --page-bg:   #F4F6F9;
+  /* ─── Page surfaces ─── */
+  --page-bg:   #F6F3EE;
   --surface:   #FFFFFF;
-  --surface-2: #F9FAFB;
-  --surface-3: #F3F4F6;
+  --surface-2: #FAF8F5;
+  --surface-3: #F2EDE7;
 
   /* ─── Borders ─── */
-  --bdr:        #E5E7EB;
-  --bdr-light:  #F3F4F6;
-  --bdr-strong: #D1D5DB;
+  --bdr:        #E8E1D8;
+  --bdr-light:  #F0EBE3;
+  --bdr-strong: #D5CABF;
 
   /* ─── Typography ─── */
-  --text-primary:   #111827;
-  --text-secondary: #374151;
-  --text-muted:     #6B7280;
-  --text-faint:     #9CA3AF;
-  --text-disabled:  #D1D5DB;
+  --text-primary:   #1C1410;
+  --text-secondary: #3D2E22;
+  --text-muted:     #7A6555;
+  --text-faint:     #B0A090;
+  --text-disabled:  #D5CABF;
 
   /* ─── Semantic status ─── */
-  --success:       #059669;
-  --success-light: #ECFDF5;
-  --warning:       #D97706;
-  --warning-light: #FFFBEB;
-  --danger:        #DC2626;
-  --danger-light:  #FEF2F2;
+  --success:       #2D8A5A;
+  --success-light: #EDF7F1;
+  --warning:       #C97B1A;
+  --warning-light: #FEF7EC;
+  --danger:        #C93232;
+  --danger-light:  #FEF0F0;
 
   /* ─── Status badge tokens ─── */
-  --status-pending-bg:   #FFFBEB;
-  --status-pending-bdr:  #FCD34D;
-  --status-pending-text: #92400E;
-  --status-pending-dot:  #F59E0B;
+  --status-pending-bg:   #FEF7EC;
+  --status-pending-bdr:  #F5C97A;
+  --status-pending-text: #7D4E00;
+  --status-pending-dot:  #E8914A;
 
   --status-prep-bg:      #EFF6FF;
   --status-prep-bdr:     #93C5FD;
   --status-prep-text:    #1D4ED8;
   --status-prep-dot:     #3B82F6;
 
-  --status-ready-bg:     #F0FDF4;
-  --status-ready-bdr:    #86EFAC;
-  --status-ready-text:   #166534;
-  --status-ready-dot:    #22C55E;
+  --status-ready-bg:     #EDF7F1;
+  --status-ready-bdr:    #7ECBA0;
+  --status-ready-text:   #165E38;
+  --status-ready-dot:    #2D8A5A;
 
-  --status-billed-bg:    #ECFDF5;
+  --status-billed-bg:    #EDF7F1;
   --status-billed-bdr:   #6EE7B7;
   --status-billed-text:  #065F46;
   --status-billed-dot:   #10B981;
 
-  --status-cancel-bg:    #F9FAFB;
-  --status-cancel-bdr:   #E5E7EB;
-  --status-cancel-text:  #6B7280;
-  --status-cancel-dot:   #9CA3AF;
+  --status-cancel-bg:    #F6F3EE;
+  --status-cancel-bdr:   #E8E1D8;
+  --status-cancel-text:  #7A6555;
+  --status-cancel-dot:   #B0A090;
 
-  /* ─── Shadows (precise, non-diffuse) ─── */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,.04);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,.09), 0 10px 10px -5px rgba(0,0,0,.04);
-  --shadow-brand: 0 4px 12px rgba(37,99,235,.2);
+  /* ─── Shadows (warm-tinted) ─── */
+  --shadow-xs: 0 1px 2px rgba(60,35,10,.05);
+  --shadow-sm: 0 1px 4px rgba(60,35,10,.07), 0 1px 2px rgba(60,35,10,.04);
+  --shadow-md: 0 4px 8px -1px rgba(60,35,10,.09), 0 2px 4px -1px rgba(60,35,10,.05);
+  --shadow-lg: 0 10px 18px -3px rgba(60,35,10,.10), 0 4px 8px -2px rgba(60,35,10,.06);
+  --shadow-xl: 0 20px 30px -5px rgba(60,35,10,.12), 0 10px 12px -5px rgba(60,35,10,.06);
+  --shadow-brand: 0 4px 14px rgba(232,145,74,.28);
 
-  /* ─── Border radius (conservative enterprise scale) ─── */
+  /* ─── Border radius (warm, slightly rounder) ─── */
   --r-xs:   2px;
-  --r-sm:   4px;   /* inline tags, chips */
-  --r-md:   6px;   /* buttons, inputs, dropdowns */
-  --r-lg:   8px;   /* cards, panels */
-  --r-xl:   10px;  /* modals, large cards */
-  --r-2xl:  14px;  /* bottom sheets */
-  --r-full: 9999px;/* pill badges only */
+  --r-sm:   5px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-2xl:  20px;
+  --r-full: 9999px;
 
   /* ─── Spacing (4px base) ─── */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
 
-  /* ─── Transitions (reduced, purposeful) ─── */
-  --fast:     100ms;
-  --normal:   180ms;
-  --slow:     260ms;
+  /* ─── Transitions ─── */
+  --fast:     110ms;
+  --normal:   190ms;
+  --slow:     270ms;
   --ease:     cubic-bezier(0.4,0,0.2,1);
   --ease-out: cubic-bezier(0,0,0.2,1);
 
   /* ─── Layout dims ─── */
-  --topbar-h:     52px;
-  --bottom-nav-h: 52px;
+  --topbar-h:     54px;
+  --bottom-nav-h: 56px;
 }
 
-/* Utility shorthands */
 .text-brand  { color: var(--brand); }
 .text-muted  { color: var(--text-muted); }

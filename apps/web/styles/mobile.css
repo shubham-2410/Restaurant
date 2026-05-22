@@ -9,7 +9,7 @@
   z-index: 100;
   background: var(--surface);
   border-top: 1px solid var(--bdr);
-  padding: 2px 0 max(2px, env(safe-area-inset-bottom));
+  padding: 2px 0 max(4px, env(safe-area-inset-bottom));
   box-shadow: 0 -1px 0 var(--bdr), var(--shadow-lg);
 }
 
@@ -26,7 +26,7 @@
 .mobile-nav__item {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 2px; padding: 5px 6px;
+  gap: 3px; padding: 5px 7px;
   border-radius: var(--r-md);
   font-size: 0.5rem; font-weight: 700;
   color: var(--text-faint);
@@ -35,13 +35,15 @@
   transition: color var(--fast) var(--ease);
   min-width: 44px; flex: 1;
   position: relative;
-  /* 44px minimum touch target per HIG */
   min-height: 44px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-family: inherit;
 }
 .mobile-nav__item:hover   { color: var(--brand); }
 .mobile-nav__item--active { color: var(--brand); }
 
-/* Active indicator: top bar */
+/* Active indicator: top bar (amber gradient) */
 .mobile-nav__item--active::before {
   content: "";
   position: absolute;
@@ -49,30 +51,30 @@
   transform: translateX(-50%);
   width: 24px; height: 2px;
   border-radius: 0 0 var(--r-sm) var(--r-sm);
-  background: var(--brand);
+  background: linear-gradient(90deg, var(--brand), var(--brand-hover));
 }
 
 .mobile-nav__icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
-.mobile-nav__label { line-height: 1; letter-spacing: 0.01em; }
+.mobile-nav__label { line-height: 1; letter-spacing: 0.04em; }
 
 /* ── Mobile page adjustments ── */
 @media (max-width: 768px) {
-  .page-header { margin-bottom: 12px; }
-  .page-title  { font-size: 1rem; }
-  .page-section { padding: 12px 14px; }
+  .page-header { margin-bottom: 14px; }
+  .page-title  { font-size: 1.1rem; }
+  .page-section { padding: 14px 16px; }
   .stats-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
   .stats-grid-5 > :last-child { grid-column: 1 / -1; }
 }
 
 /* ── Grid helpers ── */
 .responsive-grid-orders {
-  display: grid; grid-template-columns: 1fr; gap: 8px;
+  display: grid; grid-template-columns: 1fr; gap: 9px;
 }
 @media (min-width: 480px)  { .responsive-grid-orders { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 900px)  { .responsive-grid-orders { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1200px) { .responsive-grid-orders { grid-template-columns: repeat(4, 1fr); } }
 
-.responsive-grid-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.responsive-grid-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (min-width: 640px)  { .responsive-grid-stats { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1024px) { .responsive-grid-stats { grid-template-columns: repeat(5, 1fr); } }
 
@@ -84,55 +86,46 @@
 
 /* ══════════════════════════════════════════
    POS PAGE — MOBILE LAYOUT
-   Full-screen menu + bottom-sheet cart
    ══════════════════════════════════════════ */
 
-/* Cart sticky CTA bar — shown when cart has items on mobile */
-.pos-sticky-cta {
-  display: none;
-}
+.pos-sticky-cta { display: none; }
 
 @media (max-width: 768px) {
-
-  /* Menu panel: full width */
   .pos-menu-panel { width: 100% !important; flex: 1; }
-
-  /* Desktop cart panel: hidden */
   .pos-cart-panel { display: none !important; }
 
-  /* Sticky cart button */
   .pos-sticky-cta {
     display: flex;
     position: fixed;
-    bottom: calc(var(--bottom-nav-h) + 10px);
-    left: 12px; right: 12px;
+    bottom: calc(var(--bottom-nav-h) + 12px);
+    left: 14px; right: 14px;
     z-index: 120;
-    height: 50px;
-    border-radius: var(--r-md);
-    background: var(--brand);
+    height: 52px;
+    border-radius: var(--r-lg);
+    background: linear-gradient(135deg, var(--brand), var(--brand-hover));
     color: #fff;
     border: none;
     cursor: pointer;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    box-shadow: var(--shadow-brand), 0 4px 16px rgba(37,99,235,.25);
-    transition: background var(--fast) var(--ease);
+    padding: 0 18px;
+    box-shadow: var(--shadow-brand), 0 6px 20px rgba(232,145,74,.3);
+    transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
     font-weight: 700;
     font-size: 0.9375rem;
-    /* Elevate above content */
     will-change: transform;
+    font-family: inherit;
   }
-  .pos-sticky-cta:active { background: var(--brand-active); }
+  .pos-sticky-cta:active { opacity: .9; transform: scale(0.98); }
 
   .pos-sticky-cta__left  { display: flex; align-items: center; gap: 10px; }
   .pos-sticky-cta__badge {
     background: rgba(255,255,255,.25);
-    border-radius: var(--r-sm);
-    padding: 2px 7px;
+    border-radius: var(--r-full);
+    padding: 2px 8px;
     font-size: 0.75rem;
     font-weight: 800;
-    min-width: 22px;
+    min-width: 24px;
     text-align: center;
   }
   .pos-sticky-cta__label { font-weight: 600; font-size: 0.875rem; }
@@ -145,31 +138,29 @@
     z-index: 160;
     background: var(--surface);
     border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-    box-shadow: 0 -4px 24px rgba(0,0,0,.12);
-    /* Allow sheet to grow but not overflow screen */
+    box-shadow: 0 -6px 30px rgba(60,35,10,.15);
     max-height: calc(90vh - env(safe-area-inset-top));
     display: flex;
     flex-direction: column;
-    animation: slideUp 220ms var(--ease-out) both;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-    /* GPU compositing */
+    animation: slideUp 230ms var(--ease-out) both;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
     will-change: transform;
   }
 
   .pos-cart-sheet__handle {
-    width: 32px; height: 4px;
+    width: 36px; height: 4px;
     border-radius: 99px;
     background: var(--bdr-strong);
-    margin: 10px auto 6px;
+    margin: 11px auto 7px;
     flex-shrink: 0;
   }
 
-  /* Backdrop */
   .pos-cart-backdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
+    background: rgba(10,6,4,.5);
     z-index: 155;
-    animation: fadeIn 160ms var(--ease) both;
+    animation: fadeIn 170ms var(--ease) both;
+    backdrop-filter: blur(2px);
   }
 }
 
@@ -177,7 +168,7 @@
 .pos-items-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 9px;
   align-content: start;
 }
 @media (min-width: 420px)  { .pos-items-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -189,7 +180,7 @@
   display: flex;
   align-items: center;
   gap: 0;
-  border: 1px solid var(--bdr);
+  border: 1.5px solid var(--bdr);
   border-radius: var(--r-md);
   overflow: hidden;
   background: var(--surface);
@@ -202,12 +193,12 @@
   color: var(--text-muted);
   transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
   flex-shrink: 0;
-  /* Minimum touch target */
   min-width: 36px;
+  font-family: inherit;
 }
 .qty-stepper__btn:hover         { background: var(--surface-3); color: var(--text-primary); }
 .qty-stepper__btn--inc:hover    { background: var(--brand-light); color: var(--brand); }
-.qty-stepper__btn--dec:hover    { background: #FEF2F2; color: #DC2626; }
+.qty-stepper__btn--dec:hover    { background: #FEF0F0; color: #C93232; }
 .qty-stepper__btn:active        { opacity: .7; }
 
 .qty-stepper__val {
@@ -221,17 +212,11 @@
   user-select: none;
 }
 
-/* Mobile: bigger touch targets */
 @media (max-width: 768px) {
   .qty-stepper__btn { width: 40px; height: 40px; min-width: 40px; }
   .qty-stepper__val { line-height: 40px; }
 }
 
-/*
- * Modal portal is now rendered at document.body with z-index: 9999
- * via createPortal — no CSS overrides needed. The legacy .modal-overlay
- * selectors below are kept for any other modals that might use them.
- */
 @media (max-width: 640px) {
   .modal-overlay  { align-items: flex-end !important; }
   .modal {
@@ -246,8 +231,7 @@
   .modal__footer { position: sticky; bottom: 0; background: var(--surface); padding-top: 12px; border-top: 1px solid var(--bdr); }
 }
 
-/* ── Data table: mobile density ── */
 @media (max-width: 640px) {
-  .data-table th, .data-table td { padding: 7px 9px; font-size: 0.75rem; }
+  .data-table th, .data-table td { padding: 8px 10px; font-size: 0.75rem; }
   .data-table .hide-mobile        { display: none; }
 }
